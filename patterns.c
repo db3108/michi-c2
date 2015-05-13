@@ -1,6 +1,6 @@
 // patterns.c -- Routines for 3x3 patterns and large patterns for michi program
 //
-// (c) 2015 Denis Blumstein <denis.blumstein@free.fr> Petr Baudis <pasky@ucw.cz>
+// (c) 2015 Denis Blumstein <db3108@free.fr> Petr Baudis <pasky@ucw.cz>
 // MIT licence (i.e. almost public domain)
 #include "michi.h"
 
@@ -663,6 +663,11 @@ void init_large_patterns(void)
     else {
         load_spat_file(fspat);
         fclose(fspat);
+    }
+    if (fprob == NULL || fspat == NULL) {
+        fprintf(stderr, "Warning: michi cannot load pattern files, "
+                "It will be much weaker. "
+                "Consider lowering EXPAND_VISITS %d->2\n", EXPAND_VISITS);
     }
     log_fmt_s('I', "=========== Hashtable initialization synthesis ==========",
                                                                          NULL);
