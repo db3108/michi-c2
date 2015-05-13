@@ -1408,6 +1408,7 @@ void gtp_io(void)
         }
         else if (strcmp(command,"quit") == 0) {
             log_hashtable_synthesis();
+            printf("=%s \n\n", cmdid);
             break;
         }
         else {

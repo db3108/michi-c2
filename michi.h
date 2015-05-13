@@ -112,6 +112,7 @@ int  gen_playout_moves_pat3(Position *pos, Slist heuristic_set, float prob,
 void make_list_last_moves_neighbors(Position *pos, Slist points);
 double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp);
 Point parse_coord(char *s);
+char* pass_move(Position *pos);
 char* play_move(Position *pos, Point pt);
 void ppoint(Point pt);
 void print_pos(Position *pos, FILE *f, int *owner_map);
