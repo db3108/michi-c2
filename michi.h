@@ -112,8 +112,8 @@ int  gen_playout_moves_pat3(Position *pos, Slist heuristic_set, float prob,
 void make_list_last_moves_neighbors(Position *pos, Slist points);
 double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp);
 Point parse_coord(char *s);
-char* pass_move(Position *pos);
 char* play_move(Position *pos, Point pt);
+char* pass_move(Position *pos);
 void ppoint(Point pt);
 void print_pos(Position *pos, FILE *f, int *owner_map);
 void print_tree_summary(TreeNode *tree, int sims, FILE *f);
@@ -146,8 +146,8 @@ double large_pattern_probability(Point pt);
 //------------ Useful utility functions (inlined for performance) -------------
 // Quick and Dirty random generator (32 bits Linear Congruential Generator)
 // Ref: Numerical Recipes in C (W.H. Press & al), 2nd Ed page 284
-__INLINE__ uint  qdrandom(void) {idum=(1664525*idum)+1013904223; return idum;}
-__INLINE__ uint random_int(int n) /* random int between 0 and n-1 */ \
+__INLINE__ unsigned int qdrandom(void) {idum=(1664525*idum)+1013904223; return idum;}
+__INLINE__ unsigned int random_int(int n) /* random int between 0 and n-1 */ \
            {unsigned long r=qdrandom(); return (r*n)>>32;}
 
 // Go programs manipulates lists or sets of (small) integers a lot. There are 
