@@ -1,0 +1,18 @@
+------------------------------------
+-- ChangeLog for the michi-c program
+------------------------------------
+
+1.1 Released May, 28 2015 (Temporary version)
+
+- functional but not fully validated nor optimized
+- incremental update of blocks and liberties at each move (new board.c)
+- add regression tests for board
+- change color: BLACK and WHITE instead of X of x (to_play and other)
+- use blocks and liberties in make_list_neighbor_blocks_in_atari()
+
+1.0 Released May, 12 2015
+
+- exactly the same algorithms and parameters as in michi.py
+- single thread
+- almost 10 times faster in 13x13 games than michi.py (with pypy and 4 threads)
+- regression tests for fix_atari() and large patterns 

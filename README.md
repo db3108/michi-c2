@@ -18,5 +18,7 @@ The foreseen evolutions are :
   * variable boardsize, 
   * "intelligent" early passing 
 
+WARNING ! The current version is a TEMPORARY version (see ChangeLog) whose only purpose is to publish the new internal interfaces of michi-c.
+
 Michi-c2 is distributed under the MIT licence.  Now go forth, hack and peruse!
 

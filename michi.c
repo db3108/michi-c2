@@ -101,15 +101,12 @@ void usage() {
 // implementation easier).  Coordinates are just indices in this string.
 //
 // -------------------------------- Global Data -------------------------------
-//                      North East South  West  NE  SE  SW  NW
-static int   delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
 static char* colstr  = "@ABCDEFGHJKLMNOPQRST";
 Mark         *mark1, *mark2, *already_suggested;
 unsigned int idum=1;
 char         buf[BUFLEN];
 Point        allpoints[BOARDSIZE];
 int          PRIOR_CFG[] =     {24, 22, 8};
-Point        pos_capture;
 
 //================================== Code =====================================
 // Utilities
@@ -147,392 +144,6 @@ unsigned int true_random_seed(void)
     return (r1^r2);
 }
 
-//=============================== Board routines ==============================
-char is_eyeish(Position *pos, Point pt)
-// test if pt is inside a single-color diamond and return the diamond color or 0
-// this could be an eye, but also a false one
-{
-    char eyecolor=0, othercolor=0;
-    int k;
-    Point n;
-    FORALL_NEIGHBORS(pos, pt, k, n) {
-        char c = pos->color[n];
-        if(c == ' ') continue;                // ignore OUT of board neighbours
-        if(c == '.') return 0;
-        if(eyecolor == 0) {
-            eyecolor = c;
-            othercolor = c; SWAP_CASE(othercolor);
-        }
-        else if (c == othercolor) return 0;
-    }
-    return eyecolor;
-}
-
-char is_eye(Position *pos, Point pt)
-// test if pt is an eye and return its color or 0.
-//                                                  #########   
-// Note: this test cannot detect true eyes like     . . X . #   or    X X X
-//                                                    X . X #         X   X
-//                                                    X X . #           X   X
-//                                                        . #           X X X
-{
-    char eyecolor=is_eyeish(pos, pt), falsecolor=eyecolor;
-    int at_edge=0, false_count=0, k;
-    Point d;
-    if (eyecolor == 0) return 0;
-    
-    // Eye-like shape, but it could be a falsified eye
-    SWAP_CASE(falsecolor);
-    FORALL_DIAGONAL_NEIGHBORS(pos, pt, k, d) {
-        if(pos->color[d] == ' ') at_edge = 1;
-        else if(pos->color[d] == falsecolor) false_count += 1;
-    }
-    if (at_edge) false_count += 1;
-    if (false_count >= 2) return 0;
-    return eyecolor;
-}
-
-Byte compute_env4(Position *pos, Point pt, int offset)
-// Compute value of the environnement of a point (Byte)
-// offset=0 for the 4 neighbors, offset=4 for the 4 diagonal neighbors
-{
-    Byte env4=0, hi, lo, c;
-    for (int k=offset ; k<offset+4 ; k++) {
-        Point n = pt + delta[k];
-        // color coding c -> 0:WHITE, 1:BLACK, 2:EMPTY, 3:OUT 
-        if (pos->color[n] == '.')         c = 2;
-        else if(pos->color[n] == ' ')     c = 3;
-        else {
-            // env4 is computed with real colors on the board
-            if (pos->n%2==0) {      // BLACK to play (X=BLACK, x=WHITE)
-                if (pos->color[n] == 'X') c = 1;
-                else                      c = 0;
-            }
-            else {                  // WHITE to play (X=WHITE, x=BLACK)
-                if (pos->color[n] == 'X') c = 0;
-                else                      c = 1;
-            }
-        }
-        hi = c >> 1; lo = c & 1;
-        env4 |= ((hi<<4)+lo) << (k-offset);
-    }
-    return env4;
-}
-
-void put_stone(Position *pos, Point pt)
-// Always put a stone of color 'X'. See discussion on env4 in patterns.c
-{
-    if (pos->n%2 == 0) {  // BLACK to play (X=BLACK)
-        pos->env4[pt+N+1] ^= 0x11;
-        pos->env4[pt-1]   ^= 0x22;
-        pos->env4[pt-N-1] ^= 0x44;
-        pos->env4[pt+1]   ^= 0x88;
-        pos->env4d[pt+N]  ^= 0x11;
-        pos->env4d[pt-W]  ^= 0x22;
-        pos->env4d[pt-N]  ^= 0x44;
-        pos->env4d[pt+W]  ^= 0x88;
-    }
-    else {                // WHITE to play (X=WHITE)
-        pos->env4[pt+N+1] &= 0xEE;
-        pos->env4[pt-1]   &= 0xDD;
-        pos->env4[pt-N-1] &= 0xBB;
-        pos->env4[pt+1]   &= 0x77;
-        pos->env4d[pt+N]  &= 0xEE;
-        pos->env4d[pt-W]  &= 0xDD;
-        pos->env4d[pt-N]  &= 0xBB;
-        pos->env4d[pt+W]  &= 0x77;
-    }
-    pos->color[pt] = 'X';
-}
-
-void remove_stone(Position *pos, Point pt)
-// Always remove a stone of color 'x' (cheat done by caller when undo move)
-{
-    if (pos->n%2 == 0) {  // BLACK to play (x=WHITE)
-        pos->env4[pt+N+1] |= 0x10;
-        pos->env4[pt-1]   |= 0x20;
-        pos->env4[pt-N-1] |= 0x40;
-        pos->env4[pt+1]   |= 0x80;
-        pos->env4d[pt+N]  |= 0x10;
-        pos->env4d[pt-W]  |= 0x20;
-        pos->env4d[pt-N]  |= 0x40;
-        pos->env4d[pt+W]  |= 0x80;
-    }
-    else {                // WHITE to play (x=BLACK)
-        pos->env4[pt+N+1] ^= 0x11;
-        pos->env4[pt-1]   ^= 0x22;
-        pos->env4[pt-N-1] ^= 0x44;
-        pos->env4[pt+1]   ^= 0x88;
-        pos->env4d[pt+N]  ^= 0x11;
-        pos->env4d[pt-W]  ^= 0x22;
-        pos->env4d[pt-N]  ^= 0x44;
-        pos->env4d[pt+W]  ^= 0x88;
-    }
-    pos->color[pt] = '.';
-}
-
-void dump_env4(Byte env4, Byte true_env4)
-{
-    for (int i=0 ; i<8 ; i++) {
-        if (i == 4) fprintf(stderr, " ");
-        if (env4 & 128)
-            fprintf(stderr, "1");
-        else
-            fprintf(stderr, "0");
-        env4 <<= 1;
-    }
-    fprintf(stderr, " (true: ");
-    for (int i=0 ; i<8 ; i++) {
-        if (i==4) fprintf(stderr, " ");
-        if (true_env4 & 128)
-            fprintf(stderr, "1");
-        else
-            fprintf(stderr, "0");
-        true_env4 <<= 1;
-    }
-    fprintf(stderr, ")\n");
-}
-
-int env4_OK(Position *pos)
-{
-    FORALL_POINTS(pos,pt) {
-        if (pos->color[pt] == ' ') continue;
-        if (pos->env4[pt] != compute_env4(pos, pt, 0)) {
-            fprintf(stderr, "%s ERR env4 = ", str_coord(pt,buf));
-            dump_env4(pos->env4[pt], compute_env4(pos,pt,0));
-            return 0;
-        }
-        if (pos->env4d[pt] != compute_env4(pos,pt,4)) {
-            fprintf(stderr, "%s ERR env4d = ", str_coord(pt,buf));
-            dump_env4(pos->env4d[pt], compute_env4(pos,pt,4));
-            return 0;
-        }
-    }
-    return 1;
-}
-
-char* empty_position(Position *pos)
-// Reset pos to an initial board position
-{
-    int k = 0;
-    for (int col=0 ; col<=N ; col++) pos->color[k++] = ' ';
-    for (int row=1 ; row<=N ; row++) {
-        pos->color[k++] = ' ';
-        for (int col=1 ; col<=N ; col++) pos->color[k++] = '.';
-    }
-    for (int col=0 ; col<W ; col++) pos->color[k++] = ' ';
-    FORALL_POINTS(pos, pt) {
-        if (pos->color[pt] == ' ') continue;
-        pos->env4[pt] = compute_env4(pos, pt, 0);
-        pos->env4d[pt] = compute_env4(pos, pt, 4);
-    }
-
-    pos->ko = pos->last = pos->last2 = 0;
-    pos->capX = pos->cap = 0;
-    pos->n = 0; pos->komi = 7.5;
-    assert(env4_OK(pos));
-    return "";              // result OK
-}
-
-void compute_block(Position *pos, Point pt, Slist stones, Slist libs, int nlibs)
-// Compute block at pt : list of stones and list of liberties
-// Return early when nlibs liberties are found
-{
-    char  color=pos->color[pt];
-    int   head=2, k, tail=1;
-    Point n;
-
-    mark_init(mark1); slist_clear(libs);
-    stones[1] = pt; mark(mark1, pt);
-    while(head>tail) {
-        pt = stones[tail++];
-        FORALL_NEIGHBORS(pos, pt, k, n)
-            if (!is_marked(mark1, n)) {
-                mark(mark1, n);
-                if (pos->color[n] == color)    stones[head++] = n;
-                else if (pos->color[n] == '.') {
-                    slist_push(libs, n);
-                    if (slist_size(libs) >= nlibs) goto finished;
-                }
-            }
-    }
-finished:
-    stones[0] = head-1;
-    mark_release(mark1);
-}
-
-int capture_block(Position *pos, Slist stones)
-{
-    FORALL_IN_SLIST(stones, pt) remove_stone(pos, pt);
-    assert(env4_OK(pos));
-    return slist_size(stones);
-}
-
-void swap_color(Position *pos) 
-{
-    FORALL_POINTS(pos, pt)
-        SWAP_CASE(pos->color[pt]);
-}
-
-void remove_X_stone(Position *pos, Point pt)
-{
-    (pos->n)++;             // cheat to make remove_stone() work
-    remove_stone(pos, pt);
-    (pos->n)--;             // undo cheat
-}
-
-void undo_move(Position *pos)
-// WARNINGS: can only undo one move, can only undo capture of 1 stone
-// Enough to undo snap back
-{
-    remove_stone(pos, pos->last);
-    pos->last = pos->last2; pos->last2 = pos->last3;
-    pos->ko = pos->ko_old;
-    if (pos_capture) {
-        put_stone(pos, pos_capture);
-        pos->cap -=1;
-    }
-    (pos->n)--;
-    SWAP(char,pos->cap, pos->capX);
-    swap_color(pos);
-    assert(env4_OK(pos));
-}
-
-char* play_move(Position *pos, Point pt)
-// Play a move at point pt (color is imposed by alternate play)
-{
-    int   captured=0, k;
-    Point libs[BOARDSIZE], n, stones[BOARDSIZE];
-
-    pos->ko_old = pos->ko;
-    if (pt == pos->ko) return "Error Illegal move: retakes ko";
-    int in_enemy_eye = is_eyeish(pos, pt);
-
-    put_stone(pos, pt);
-    // Check for captures
-    pos_capture = 0;
-    FORALL_NEIGHBORS(pos, pt, k, n) {
-        if (pos->color[n] != 'x') continue;
-        compute_block(pos,n,stones, libs, 1);                // extremely naive
-        if (slist_size(libs)==0) {
-            captured += capture_block(pos, stones);
-            pos_capture = n;
-        }
-
-    }
-    if (captured) { // Set ko
-        if (captured==1 && in_enemy_eye) pos->ko = pos_capture;
-        else                             pos->ko = 0;
-    }
-    else { // Test for suicide
-        pos->ko = 0;
-        compute_block(pos, pt, stones, libs, 1);
-        if(slist_size(libs) == 0) {
-            pos->ko = pos->ko_old;
-            remove_X_stone(pos, pt);
-            return "Error Illegal move: suicide";
-        }
-    }
-    // Finish update of the position
-    captured += pos->capX;
-    pos->capX = pos->cap;
-    pos->cap  = captured;
-    swap_color(pos);
-    (pos->n)++;
-    assert(env4_OK(pos));
-    pos->last3 = pos->last2;
-    pos->last2 = pos->last;
-    pos->last  = pt;
-    return "";          // Move OK
-}
-
-char* pass_move(Position *pos)
-// Pass - i.e. simply flip the position
-{
-    swap_color(pos); (pos->n)++;
-    pos->last2 = pos->last;
-    pos->last  = pos->ko = 0;
-    SWAP(int,pos->cap, pos->capX);
-    return "";          // PASS moVE is always OK
-}
-
-void make_list_neighbors(Position *pos, Point pt, Slist points)
-{
-    slist_clear(points);
-    if (pt == PASS_MOVE) return;
-    slist_push(points, pt);
-    for (int k=0 ; k<8 ; k++)
-        if (pos->color[pt+delta[k]] != ' ')
-            slist_push(points, pt+delta[k]);
-    slist_shuffle(points);
-}
-
-void make_list_last_moves_neighbors(Position *pos, Slist points)
-// generate a randomly shuffled list of points including and surrounding 
-// the last two moves (but with the last move having priority)
-{
-    Point last2_neighbors[12];
-    make_list_neighbors(pos, pos->last,points);
-    make_list_neighbors(pos, pos->last2,last2_neighbors);
-    FORALL_IN_SLIST(last2_neighbors, n)
-        slist_insert(points, n);     // insert n if it is not already in points
-}
-
-void make_list_neighbor_blocks_in_atari(Position *pos, Slist stones, 
-        Slist breps, Slist libs)
-// Return a list of (opponent) blocks in contact with point in stones
-// Each block in the list is represented by one of its points brep
-{
-    char  color = pos->color[stones[1]];
-    int   k, maxlibs=2;
-    Point n, st[BOARDSIZE], l[4];
-
-    if (color == 'x') color = 'X';
-    else              color = 'x';
-
-    mark_init(mark2); slist_clear(breps); slist_clear(libs);
-    FORALL_IN_SLIST(stones, pt) {
-        FORALL_NEIGHBORS(pos, pt, k, n) {
-            if (pos->color[n] == color && !is_marked(mark2, n)) {
-                compute_block(pos, n, st, l, maxlibs);
-                if (slist_size(l) == 1) {
-                    slist_push(breps, st[1]);
-                    slist_push(libs, l[1]);
-                    FORALL_IN_SLIST(st, p)
-                        mark(mark2, p);
-                }
-            }
-        }
-    }
-    mark_release(mark2);
-}
-
-double score(Position *pos, int owner_map[])
-// compute score for to-play player; this assumes a final position with all 
-// dead stones captured and only single point eyes on the board ...
-{
-    double s=pos->komi;
-    int    n=-1;
-    if (pos->n%2==0) {
-        s = -s;           // komi counts negatively for BLACK
-        n = 1;
-    }
-
-    FORALL_POINTS(pos,pt) {
-        char c = pos->color[pt];
-        if (c=='.') c = is_eyeish(pos,pt);
-        if (c=='X') {
-            s += 1.0;
-            owner_map[pt] += n;
-        }
-        else if (c=='x') {
-            s -= 1.0;
-            owner_map[pt] -= n;
-        }
-    }
-    return s;
-}
-
 //================================ Go heuristics ==============================
 // The couple of functions read_ladder_attack / fix_atari is maybe the most 
 // complicated part of the whole program (sadly). 
@@ -544,7 +155,7 @@ Point read_ladder_attack(Position *pos, Point pt, Slist libs)
 // Actually, this is a general 2-lib capture exhaustive solver.
 {
     Point moves[5], sizes[5];   // 4 points should be enough ...
-    Point move=0, pos_capture_old = pos_capture;
+    Point move=0;
     FORALL_IN_SLIST(libs, l) {
         Position pos_l = *pos;
         char *ret = play_move(&pos_l, l);
@@ -558,11 +169,9 @@ Point read_ladder_attack(Position *pos, Point pt, Slist libs)
         if (is_atari && slist_size(moves) == 0) 
             move = l; 
     }
-    pos_capture = pos_capture_old;
     return move;   // ladder attack not successful
 }
 
-int line_height(Point pt);
 int fix_atari(Position *pos, Point pt, int singlept_ok
         , int twolib_test, int twolib_edgeonly, Slist moves, Slist sizes)
 // An atari/capture analysis routine that checks the group at Point pt,
@@ -574,8 +183,9 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
 //        sizes : list of same lenght as moves (size of corresponding blocks)
 // singlept_ok!=0 means that we will not try to save one-point groups
 {
-    int in_atari=1, maxlibs=3;
-    Point stones[BOARDSIZE], l, libs[5], blocks[256], blibs[256];
+    Block b = point_block(pos, pt);
+    int   in_atari=1, maxlibs=3;
+    Point stones[BOARDSIZE], l, libs[5], blocks[256], blibs[5];
 
     slist_clear(moves); slist_clear(sizes);
     compute_block(pos, pt, stones, libs, maxlibs);
@@ -601,7 +211,8 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
         return 0;  
     }
 
-    if (pos->color[pt] == 'x') { 
+    Color other=color_other(pos->to_play);
+    if (point_color(pos, pt) == other) { 
         // - this is opponent's group, that's enough to capture it
         if (slist_insert(moves, libs[1])) 
             slist_push(sizes, slist_size(stones));
@@ -610,20 +221,20 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
 
     // This is our group and it is in atari
     // Before thinking about defense, what about counter-capturing a neighbor ?
-    make_list_neighbor_blocks_in_atari(pos, stones, blocks, blibs);
-    FORALL_IN_SLIST(blibs, l)
-        if (slist_insert(moves, l))
-            slist_push(sizes, slist_size(stones));
+    make_list_neighbor_blocks_in_atari(pos, b, blocks);
+    FORALL_IN_SLIST(blocks, b1) {
+        block_compute_libs(pos, b1, blibs);
+        if (slist_insert(moves, blibs[1]))
+            slist_push(sizes, block_size(pos, b1));
+    }
 
     l = libs[1];
     // We are escaping.  
     // Will playing our last liberty gain/ at least two liberties?
-    Point pos_capture_old = pos_capture;
     Position escpos = *pos;
     char *ret = play_move(&escpos, l);
     if (ret[0]!=0)
         return 1;     // oops, suicidal move
-    pos_capture = pos_capture_old;
     compute_block(&escpos, l, stones, libs, maxlibs);  
     if (slist_size(libs) >= 2) {
         // Good, there is still some liberty remaining - but if it's just the 
@@ -638,63 +249,6 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
     return in_atari;
 }
 
-void compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE])
-// Return a board map listing common fate graph distances from a given point.
-// This corresponds to the concept of locality while contracting groups to 
-// single points.
-{
-    int   head=1, k, tail=0;
-    Point fringe[30*BOARDSIZE], n;
-
-    memset(cfg_map, -1, BOARDSIZE);
-    cfg_map[pt] = 0;
-
-    // flood-fill like mechanics
-    fringe[0]=pt;
-    while(head > tail) {
-        pt = fringe[tail++];
-        FORALL_NEIGHBORS(pos, pt, k, n) {
-            char c = pos->color[n];
-            if (c==' ') continue;
-            if (0 <= cfg_map[n] && cfg_map[n] <= cfg_map[pt]) continue;
-            int cfg_before = cfg_map[n];
-            if (c != '.' && c==pos->color[pt]) 
-                cfg_map[n] = cfg_map[pt];
-            else
-                cfg_map[n] = cfg_map[pt]+1;
-            if (cfg_before < 0 || cfg_before > cfg_map[n]) {
-                fringe[head++] = n;
-                assert(head < 30*BOARDSIZE);
-            }
-        }
-    }
-}
-
-int line_height(Point pt)
-// Return the line number above nearest board edge (0 based)
-{
-    div_t d = div(pt,N+1);
-    int row = d.quot, col=d.rem;
-    if (row > N/2) row = N+1-row;
-    if (col > N/2) col = N+1-col;
-    if (row < col) return row-1;
-    else           return col-1;
-}
-
-int empty_area(Position *pos, Point pt, int dist)
-// Check whether there are any stones in Manhattan distance up to dist
-{
-    int   k;
-    Point n;
-    FORALL_NEIGHBORS(pos, pt, k, n) {
-        if (pos->color[n]=='x' || pos->color[n]=='X') 
-            return 0;
-        else if (pos->color[n]=='.' && dist>1 && !empty_area(pos, n, dist-1))
-            return 0;
-    }
-    return 1;
-}
-
 //========================= Montecarlo playout policy =========================
 int gen_playout_moves_capture(Position *pos, Slist heuristic_set, float prob,
                                     int expensive_ok, Slist moves, Slist sizes)
@@ -707,15 +261,16 @@ int gen_playout_moves_capture(Position *pos, Slist heuristic_set, float prob,
     Point move2[20], size2[20];
 
     slist_clear(moves); slist_clear(sizes);
-    FORALL_IN_SLIST(heuristic_set, pt)
-        if (pos->color[pt]=='x' || pos->color[pt]=='X') {
-            fix_atari(pos, pt, SINGLEPT_NOK, TWOLIBS_TEST,
-                                            twolib_edgeonly, move2, size2);
-            k=1;
-            FORALL_IN_SLIST(move2, move)
-                if (slist_insert(moves, move))
-                    slist_push(sizes, size2[k++]);
-        }
+    if (random_int(10000) <= prob*10000.0)
+        FORALL_IN_SLIST(heuristic_set, pt)
+            if (point_is_stone(pos, pt)) {
+                fix_atari(pos, pt, SINGLEPT_NOK, TWOLIBS_TEST,
+                                                twolib_edgeonly, move2, size2);
+                k=1;
+                FORALL_IN_SLIST(move2, move)
+                    if (slist_insert(moves, move))
+                        slist_push(sizes, size2[k++]);
+            }
     return slist_size(moves);
 }
 
@@ -728,9 +283,9 @@ int gen_playout_moves_pat3(Position *pos, Slist heuristic_set, float prob,
 {
     slist_clear(moves);
     mark_init(already_suggested);
-    if (random_int(1000) <= prob*1000.0)
+    if (random_int(10000) <= prob*10000.0)
         FORALL_IN_SLIST(heuristic_set, pt)
-            if (pos->color[pt] == '.' && pat3_match(pos, pt))
+            if (point_color(pos,pt) == EMPTY && pat3_match(pos, pt))
                slist_push(moves, pt); 
     mark_release(already_suggested);
     return slist_size(moves);
@@ -741,15 +296,16 @@ int gen_playout_moves_random(Position *pos, Point moves[BOARDSIZE], Point i0)
 // does not include true-eye-filling moves), starting from a given board index
 // (that can be used for randomization)
 {
+    Color c=pos->to_play;
     slist_clear(moves);
     for(Point i=i0 ; i<BOARD_IMAX ; i++) {
-        if (pos->color[i] != '.') continue;    // ignore NOT EMPTY Points
-        if (is_eye(pos,i) == 'X') continue;    // ignore true eyes for player
+        if (point_color(pos,i) != EMPTY) continue;   // ignore NOT EMPTY Points
+        if (is_eye(pos,i) == c) continue;        // ignore true eyes for player
         slist_push(moves, i); 
     }
     for(Point i=BOARD_IMIN-1 ; i<i0 ; i++) {
-        if (pos->color[i] != '.') continue;    // ignore NOT EMPTY Points
-        if (is_eye(pos,i) == 'X') continue;    // ignore true eyes for player
+        if (point_color(pos,i) != EMPTY) continue;   // ignore NOT EMPTY Points
+        if (is_eye(pos,i) == c) continue;        // ignore true eyes for player
         slist_push(moves, i); 
     }
     return slist_size(moves);
@@ -760,6 +316,7 @@ Point choose_from(Position *pos, Slist moves, char *kind, int disp)
     char   *ret;
     Info   sizes[20];
     Point  move = PASS_MOVE, ds[20];
+    Position saved_pos = *pos;
 
     FORALL_IN_SLIST(moves, pt) {
         if (disp && strcmp(kind, "random")!=0)
@@ -777,7 +334,7 @@ Point choose_from(Position *pos, Slist moves, char *kind, int disp)
                 if (slist_size(ds) > 0) {
                     if(disp) fprintf(stderr, "rejecting self-atari move %s\n",
                                                            str_coord(pt, buf));
-                    undo_move(pos);
+                    *pos = saved_pos; // undo move;
                     move = PASS_MOVE;
                     continue;
                 }
@@ -786,6 +343,28 @@ Point choose_from(Position *pos, Slist moves, char *kind, int disp)
         }
     }
     return move;
+}
+
+double score(Position *pos, int owner_map[])
+// compute score for to-play player; this assumes a final position with all 
+// dead stones captured and only single point eyes on the board ...
+{
+    double s=0.0;
+
+    FORALL_POINTS(pos,pt) {
+        Color c = point_color(pos, pt);
+        if (c == EMPTY) c = is_eyeish(pos,pt);
+        if (c == BLACK) {
+            s += 1.0;
+            owner_map[pt]++;
+        }
+        else if (c == WHITE) {
+            s -= 1.0;
+            owner_map[pt]--;
+        }
+    }
+    if (pos->to_play == BLACK) return s - pos->komi;
+    else                       return -s + pos->komi;
 }
 
 double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp)
@@ -799,6 +378,7 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp)
     if(disp) fprintf(stderr, "** SIMULATION **\n");
 
     while (passes < 2 && pos->n < MAX_GAME_LEN) {
+        //c2 = pos->n;
         move = 0;
         if(disp) print_pos(pos, stdout, NULL);
         // We simply try the moves our heuristics generate, in a particular
@@ -818,7 +398,7 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp)
             if((move=choose_from(pos, moves, "pat3", disp)) != PASS_MOVE) 
                 goto found;
             
-        gen_playout_moves_random(pos, moves, BOARD_IMIN-1+random_int(N*W));
+        gen_playout_moves_random(pos, moves, BOARD_IMIN-1+random_int(N*(N+1)));
         move=choose_from(pos, moves, "random", disp);
 found:
         if (move == PASS_MOVE) {      // No valid move : pass
@@ -831,6 +411,7 @@ found:
                 amaf_map[move] = ((pos->n-1)%2==0 ? 1 : -1);
             passes=0;
         }
+        //print_pos(pos, stderr, 0);
     }
     s = score(pos, owner_map);
     if (start_n%2 != pos->n%2) s = -s;
@@ -851,7 +432,7 @@ void expand(TreeNode *tree)
     char     cfg_map[BOARDSIZE];
     int      nchildren = 0;
     Info     sizes[BOARDSIZE];
-    Point    moves[BOARDSIZE], pos_capture_old=pos_capture;
+    Point    moves[BOARDSIZE];
     Position pos2;
     TreeNode *childset[BOARDSIZE], *node;
     if (tree->pos.last!=PASS_MOVE)
@@ -863,10 +444,9 @@ void expand(TreeNode *tree)
     tree->children = calloc(slist_size(moves)+1, sizeof(TreeNode*));
     FORALL_IN_SLIST(moves, pt) {
         pos2 = tree->pos;
-        assert(tree->pos.color[pt] == '.');
+        assert(point_color(&tree->pos, pt) == EMPTY);
         char* ret = play_move(&pos2, pt);
         if (ret[0] != 0) continue;
-        pos_capture = pos_capture_old;
         // pt is a legal move : we build a new node for it
         childset[pt]= tree->children[nchildren++] = new_tree_node(&pos2);
     }
@@ -879,7 +459,6 @@ void expand(TreeNode *tree)
         pos2 = tree->pos;
         char* ret = play_move(&pos2, pt);
         if (ret[0] != 0) continue;
-        pos_capture = pos_capture_old;
         node = childset[pt];
         if (sizes[k] == 1) {
             node->pv += PRIOR_CAPTURE_ONE;
@@ -896,7 +475,6 @@ void expand(TreeNode *tree)
         pos2 = tree->pos;
         char* ret = play_move(&pos2, pt);
         if (ret[0] != 0) continue;
-        pos_capture = pos_capture_old;
         node = childset[pt];
         node->pv += PRIOR_PAT3;
         node->pw += PRIOR_PAT3;
@@ -1131,21 +709,14 @@ Point tree_search(TreeNode *tree, int n, int owner_map[], int disp)
 void make_pretty(Position *pos, char pretty_board[BOARDSIZE], int *capB
                                                                 , int *capW)
 {
-    if ((pos->n)%2) { // WHITE to play
-        for (int k=0 ; k<BOARDSIZE ; k++)
-            if (pos->color[k] == 'X')      pretty_board[k] = 'O';
-            else if (pos->color[k] == 'x') pretty_board[k] = 'X';
-            else                           pretty_board[k] = pos->color[k];
-        *capB = pos->cap;
-        *capW = pos->capX;
+    for (int k=0 ; k<BOARDSIZE ; k++) {
+        if (point_color(pos, k) == BLACK)      pretty_board[k] = 'X';
+        else if (point_color(pos, k) == WHITE) pretty_board[k] = 'O';
+        else if (point_color(pos, k) == EMPTY) pretty_board[k] = '.';
+        else                                   pretty_board[k] = ' ';
     }
-    else { // BLACK to play
-        for (int k=0 ; k<BOARDSIZE ; k++)
-            if (pos->color[k] == 'x') pretty_board[k] = 'O';
-            else                      pretty_board[k] = pos->color[k];
-        *capW = pos->cap;
-        *capB = pos->capX;
-    }
+    *capW = pos->caps[0];
+    *capB = pos->caps[1];
 }
 
 void dump_subtree(TreeNode *node, double thres, char *indent, FILE *f
@@ -1284,6 +855,7 @@ double mcbenchmark(int n, Position *pos, int amaf_map[], int owner_map[])
 // run n Monte-Carlo playouts from empty position, return avg. score
 {
     double sumscore = 0.0;
+    idum = 1;
     for (int i=0 ; i<n ; i++) {
         if (i%10 == 0) {
             if (i%50 == 0) fprintf(stderr, "\n%5d", i);
@@ -1338,7 +910,7 @@ void gtp_io(void)
             char *str = strtok(NULL, " \t\n");
             if(str == NULL) goto finish_command;
             Point pt = parse_coord(str);
-            if (pos->color[pt] == '.')
+            if (point_color(pos,pt) == EMPTY)
                 ret = play_move(pos, pt);           // suppose alternate play
             else {
                 if(pt == PASS_MOVE) ret = pass_move(pos);
@@ -1431,6 +1003,7 @@ int michi_console(int argc, char *argv[])
     // Init global data
     flog = fopen("michi.log", "w");
     setbuf(flog, NULL);                // guarantees that log is unbuffered
+    log_fmt_i('I',"Size of struct Position = %d bytes", sizeof(Position));
     make_pat3set();
     init_large_patterns();
     already_suggested = calloc(1, sizeof(Mark));
@@ -1443,7 +1016,7 @@ int michi_console(int argc, char *argv[])
     expand(tree);
     slist_clear(allpoints);
     FORALL_POINTS(pos,pt)
-        if (pos->color[pt] == '.') slist_push(allpoints,pt);
+        if (point_color(pos,pt) == EMPTY) slist_push(allpoints,pt);
 
     // check if the user gave a seed for the random generator
     if (argc == 3) {
@@ -1459,8 +1032,14 @@ int michi_console(int argc, char *argv[])
         usage();
     else if (strcmp(command,"gtp") == 0)
         gtp_io();
-    else if (strcmp(command,"mcdebug") == 0)
-        printf("%lf\n", mcplayout(pos, amaf_map, owner_map, 1)); 
+    else if (strcmp(command,"mcdebug") == 0) {
+        for (int i=0 ; i<10 ; i++) {
+            c1 = i;
+            fprintf(stderr, "%lf\n", mcplayout(pos, amaf_map, owner_map, 0)); 
+            fprintf(stderr,"mcplayout %d\n", i);
+            empty_position(pos);
+        }
+    }
     else if (strcmp(command,"mcbenchmark") == 0)
         printf("%lf\n", mcbenchmark(2000, pos, amaf_map, owner_map)); 
     else if (strcmp(command,"tsdebug") == 0) {

@@ -5,15 +5,28 @@
 #include <ctype.h>
 #include <assert.h>
 #include <math.h>
+#include "non_portable.h"
 //========================= Definition of Data Structures =====================
 
 // --------------------------- Board Constants --------------------------------
-#define N         13
+#define N          13
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
 #define BOARD_IMAX (BOARDSIZE-N-1)
 #define LARGE_BOARDSIZE ((N+14)*(N+7))
+
+#if N < 11
+    #define LIBS_SIZE  4
+    #define MAX_BLOCKS 64
+#elif N < 15
+    #define LIBS_SIZE  8
+    #define MAX_BLOCKS 128
+#else
+    #define LIBS_SIZE 12
+    #define MAX_BLOCKS 256
+#endif
+
 #define BUFLEN 256
 #define MAX_GAME_LEN (N*N*3)
 #define SINGLEPT_OK       1
@@ -46,25 +59,35 @@ extern  int PRIOR_CFG[];   // priors for moves in cfg dist. 1, 2, 3
 
 //------------------------------- Data Structures -----------------------------
 typedef unsigned char Byte;
+typedef unsigned char Block;
+typedef unsigned int  Code4;  // 4 bits code that defines a neighbors selection 
 typedef unsigned int  Info;
+typedef unsigned int  Libs;   // 32 bits unsigned integer
 typedef unsigned int  Point;
 typedef Info* Slist;
 typedef enum {PASS_MOVE, RESIGN_MOVE, COMPUTER_BLACK, COMPUTER_WHITE} Code;
+typedef enum {EMPTY=0, OUT=1, WHITE=2, BLACK=3} Color;
 
 typedef struct { // ---------------------- Go Position ------------------------
 // Given a board of size NxN (N=9, 19, ...), we represent the position
 // as a (N+1)*(N+2)+1 string, with '.' (empty), 'X' (to-play player)
 // 'x' (other player), and whitespace (off-board border to make rules
 // implementation easier).  Coordinates are just indices in this string.
-    char  color[BOARDSIZE];   // string that hold the state of the board
+    Color color[BOARDSIZE];   // string that hold the state of the board
     Byte  env4[BOARDSIZE];    // color encoding for the 4 neighbors
     Byte  env4d[BOARDSIZE];   // color encoding for the 4 diagonal neighbors
+    Block block[BOARDSIZE];   // block id of the block at point pt (0 if EMPTY)
+    Byte  nlibs[MAX_BLOCKS];          // number of liberties of block b
+    Byte  size[MAX_BLOCKS];           // number of stones of block b
+    Libs  libs[MAX_BLOCKS][LIBS_SIZE];// list of liberties of block b(bitfield) 
+    Byte  libs_size;                  // actual size of the libs (32 bits words)
+
     int   n;                  // move number
-    Point ko, ko_old;         // position of the ko (0 if no ko)
-    Point last, last2, last3; // position of the last move and the move before 
+    Color to_play;            // player that move
+    Point ko;                 // position of the ko (0 if no ko)
+    Point last, last2;        // position of the last move and the move before 
     float komi;               // komi for the game
-    char  cap;                // number of stones captured by the 'x' player
-    char  capX;               // number of stones captured by the 'X' player
+    int   caps[2];            // number of stones captured 
 } Position;         // Go position
 
 typedef struct tree_node { // ------------ Monte-Carlo tree node --------------
@@ -101,6 +124,23 @@ void log_fmt_i(char type, const char *msg, int n);
 void log_fmt_p(char type, const char *msg, Point i);
 void log_fmt_s(char type, const char *msg, const char *s);
 char* debug(Position *pos);
+int   env4_OK(Position *pos);
+int   blocks_OK(Position *pos, Point pt);
+//--------------------------- Functions in board.c ----------------------------
+void block_compute_libs(Position *pos, Block b, Slist libs);
+void compute_block(Position *pos, Point pt, Slist stones, Slist libs,
+                                                                     int nlibs);
+void compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE]);
+Byte compute_env4(Position *pos, Point pt, int offset);
+int empty_area(Position *pos, Point pt, int dist);
+char *empty_position(Position *pos);
+char is_eye(Position *pos, Point pt);
+char is_eyeish(Position *pos, Point pt);
+int line_height(Point pt);
+void make_list_last_moves_neighbors(Position *pos, Slist points);
+void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks);
+char *pass_move(Position *pos);
+char *play_move(Position *pos, Point pt);
 //-------------------------- Functions in michi.c -----------------------------
 void dump_subtree(TreeNode *node,double thres,char *indent,FILE *f,int recurse);
 int fix_atari(Position *pos, Point pt, int singlept_ok
@@ -109,11 +149,8 @@ int  gen_playout_moves_capture(Position *pos, Slist heuristic_set, float prob,
                                 int expensive_ok, Slist moves, Slist sizes);
 int  gen_playout_moves_pat3(Position *pos, Slist heuristic_set, float prob,
                                                                   Slist moves);
-void make_list_last_moves_neighbors(Position *pos, Slist points);
 double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp);
 Point parse_coord(char *s);
-char* play_move(Position *pos, Point pt);
-char* pass_move(Position *pos);
 void ppoint(Point pt);
 void print_pos(Position *pos, FILE *f, int *owner_map);
 void print_tree_summary(TreeNode *tree, int sims, FILE *f);
@@ -127,12 +164,28 @@ void   init_large_patterns(void);
 void   copy_to_large_board(Position *pos);
 void   log_hashtable_synthesis();
 double large_pattern_probability(Point pt);
-//-------------------------- Definition of Useful Macros ----------------------
+//-------------------- Functions inlined for performance ----------------------
 #ifndef _MSC_VER
     #define __INLINE__ static inline
 #else
     #define __INLINE__ static __inline
 #endif
+__INLINE__ int   block_nlibs(Position *pos, Block b)  {return pos->nlibs[b];}
+__INLINE__ int   block_size(Position *pos, Block b)   {return pos->size[b];}
+__INLINE__ Color color_other(Color c)                 {return c ^ 1;}
+__INLINE__ Block point_block(Position *pos, Point pt) {return pos->block[pt];}
+__INLINE__ Color point_color(Position *pos, Point pt) {return pos->color[pt];}
+__INLINE__ Byte  point_env4(Position *pos, Point pt)  {return pos->env4[pt];}
+__INLINE__ Byte  point_env4d(Position *pos, Point pt) {return pos->env4d[pt];}
+__INLINE__ int   point_is_stone(Position *pos, Point pt)  
+                                {return (point_color(pos, pt) & 2) != 0;}
+// 4 bits codes giving the neighbors of a given color
+// bit 0(LSB): North, 1:East, 2:South, 3:West bit set(1) if the neighbor match
+__INLINE__ Code4 select_black(Byte env4) {return (env4>>4) & env4;}
+__INLINE__ Code4 select_empty(Byte env4) {return (~((env4>>4) | env4)) & 0xf;}
+__INLINE__ Code4 select_white(Byte env4) {return (env4>>4) & (~env4);}
+__INLINE__ int   code4_popcnt(Code4 code) {return popcnt_u32(code);}
+//-------------------------- Definition of Useful Macros ----------------------
 #define FORALL_POINTS(pos,i) for(Point i=BOARD_IMIN ; i<BOARD_IMAX ; i++)
 #define FORALL_NEIGHBORS(pos, pt, k, n) \
     for(k=0,n=pt+delta[0] ; k<4 ; n=pt+delta[++k])
@@ -140,13 +193,23 @@ double large_pattern_probability(Point pt);
     for(k=4,n=pt+delta[4] ; k<8 ; n=pt+delta[++k])
 #define FORALL_IN_SLIST(l, item) \
     for(int _k=1,_n=l[0],item=l[1] ; _k<=_n ; item=l[++_k])
-#define SWAP_CASE(c) {if(c == 'X') c = 'x'; else if (c == 'x') c = 'X'; }
 #define SWAP(T, u, v) {T _t = u; u = v; v = _t;}
 // Random shuffle: Knuth. The Art of Computer Programming vol.2, 2nd Ed, p.139
 #define SHUFFLE(T, l, n) for(int _k=n-1 ; _k>0 ; _k--) {  \
     int _tmp=random_int(_k); SWAP(T, l[_k], l[_tmp]); \
 }
-
+// Assertion check
+#ifdef NDEBUG
+  #define michi_assert(pos, condition)
+#else
+  #define michi_assert(pos, condition)                                        \
+    if (!condition) {                                                         \
+        print_pos(pos, flog, NULL);                                           \
+        sprintf(buf,"Assertion failed: file %s, line %d",__FILE__,__LINE__);  \
+        log_fmt_s('E',buf,NULL);                                              \
+        exit(-1);                                                             \
+    }
+#endif
 //------------ Useful utility functions (inlined for performance) -------------
 // Quick and Dirty random generator (32 bits Linear Congruential Generator)
 // Ref: Numerical Recipes in C (W.H. Press & al), 2nd Ed page 284

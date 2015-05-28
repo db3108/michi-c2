@@ -1,10 +1,8 @@
 #!/bin/bash
 
-if [ "$GOGUI" == "" ]; then
-    export GOGUI="$HOME/prg/go/gogui-1.4.9/bin"
-fi
+export REG=$HOME/prg/go/gogui-1.4.9/bin/gogui-regress
 
-export GOGUI_REGRESS="$GOGUI/gogui-regress"
-$GOGUI_REGRESS "./michi gtp" -output tests/output -long tests/fix_atari.tst 
-$GOGUI_REGRESS "./michi gtp" -output tests/output -long tests/large_pat.tst 
+$REG "./michi gtp" -output tests/output $1 tests/fix_atari.tst 
+$REG "./michi gtp" -output tests/output $1 tests/large_pat.tst 
+$REG "./michi gtp" -output tests/output $1 tests/board.tst 
 

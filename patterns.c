@@ -120,10 +120,10 @@ int code(char color, int p)
 {
     // Bits set for the 4 neighbours North(1), East(5), South(7), West(3)
     // or for the 4 diagonal neighbours NE(2), SE(8), SW(6), NE(0)
-    int code_W[4] = {   0,    0,    0,    0};           // WHITE(O)
-    int code_B[4] = {0x01, 0x02, 0x04, 0x08};           // BLACK(X)
-    int code_E[4] = {0x10, 0x20, 0x40, 0x80};           // EMPTY(.)
-    int code_O[4] = {0x11, 0x22, 0x44, 0x88};           // OUT  (#)
+    int code_E[4] = {0x00, 0x00, 0x00, 0x00};           // EMPTY(.)
+    int code_O[4] = {0x01, 0x02, 0x04, 0x08};           // OUT  (#)
+    int code_W[4] = {0x10, 0x20, 0x40, 0x80};           // WHITE(O)
+    int code_B[4] = {0x11, 0x22, 0x44, 0x88};           // BLACK(X)
     switch(color) {
         case 'O': return code_W[p];
         case 'X': return code_B[p];
@@ -603,9 +603,23 @@ void init_large_board(void)
 
 int large_board_OK(Position *pos)
 {
+    char large_board_color[4];
+    if (pos->to_play == BLACK) {
+        large_board_color[EMPTY] = '.';
+        large_board_color[OUT]   = '#';
+        large_board_color[WHITE] = 'x';
+        large_board_color[BLACK] = 'X';
+    }
+    else {
+        large_board_color[EMPTY] = '.';
+        large_board_color[OUT]   = '#';
+        large_board_color[WHITE] = 'X';
+        large_board_color[BLACK] = 'x';
+    }
+
     FORALL_POINTS(pos,pt) {
-        if (pos->color[pt] == ' ') continue;
-        if (pos->color[pt] != large_board[large_coord[pt]])
+        if (point_color(pos,pt) == OUT) continue;
+        if (large_board_color[point_color(pos,pt)] != large_board[large_coord[pt]])
             return 0;
     }
     return 1;
@@ -626,10 +640,23 @@ void print_large_board(FILE *f)
 void copy_to_large_board(Position *pos)
 // Copy the current position to the large board
 {
+    char large_board_color[4];
     int lpt=(N+7)*7+7, pt=(N+1)+1;
+    if (pos->to_play == BLACK) {
+        large_board_color[EMPTY] = '.';
+        large_board_color[OUT]   = '#';
+        large_board_color[WHITE] = 'x';
+        large_board_color[BLACK] = 'X';
+    }
+    else {
+        large_board_color[EMPTY] = '.';
+        large_board_color[OUT]   = '#';
+        large_board_color[WHITE] = 'X';
+        large_board_color[BLACK] = 'x';
+    }
     for (int y=0 ; y<N ; y++, lpt+=7, pt++)
        for (int x=0 ; x<N ; x++)
-           large_board[lpt++] = pos->color[pt++];
+           large_board[lpt++] = large_board_color[point_color(pos, pt++)];
     assert(large_board_OK(pos));
 }
 
@@ -730,6 +757,7 @@ char* make_list_pat_matching(Point pt, int verbose)
 void log_hashtable_synthesis() 
 {
     double nkeys=0;
+    if (!large_patterns_loaded) return;
     for (int i=0 ; i<LENGTH ; i++) 
         if(patterns[i].key != 0) nkeys +=1.0;
     sprintf(buf,"hashtable entries: %.0lf (fill ratio: %.1lf %%)", nkeys,

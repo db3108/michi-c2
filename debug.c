@@ -1,5 +1,6 @@
 #include "michi.h"
-extern char buf[BUFLEN];
+static char buf[BUFLEN];
+static int  delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
 
 //============================= messages logging ==============================
 FILE    *flog;             // FILE to log messages
@@ -40,6 +41,143 @@ void log_fmt_p(char type, const char *msg, Point pt)
     char str[8];
     sprintf(buf, msg, str_coord(pt,str));
     log_fmt_s(type,"%s", buf);
+}
+//============================= debug subcommands =============================
+void dump_env4(Byte env4, Byte true_env4)
+{
+    for (int i=0 ; i<8 ; i++) {
+        if (i == 4) fprintf(stderr, " ");
+        if (env4 & 128)
+            fprintf(stderr, "1");
+        else
+            fprintf(stderr, "0");
+        env4 <<= 1;
+    }
+    fprintf(stderr, " (true: ");
+    for (int i=0 ; i<8 ; i++) {
+        if (i==4) fprintf(stderr, " ");
+        if (true_env4 & 128)
+            fprintf(stderr, "1");
+        else
+            fprintf(stderr, "0");
+        true_env4 <<= 1;
+    }
+    fprintf(stderr, ")\n");
+}
+
+int env4_OK(Position *pos)
+{
+    FORALL_POINTS(pos,pt) {
+        if (point_color(pos,pt) == OUT) continue;
+        if (point_env4(pos,pt) != compute_env4(pos, pt, 0)) {
+            fprintf(stderr, "%s ERR env4 = ", str_coord(pt,buf));
+            dump_env4(point_env4(pos,pt), compute_env4(pos,pt,0));
+            return 0;
+        }
+        if (point_env4d(pos,pt) != compute_env4(pos,pt,4)) {
+            fprintf(stderr, "%s ERR env4d = ", str_coord(pt,buf));
+            dump_env4(point_env4d(pos,pt), compute_env4(pos,pt,4));
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int check_block(Position *pos, Point pt)
+// return 1 if block at point pt is OK, else 0
+{
+    Block b=pos->block[pt];
+    char  str[8];
+    int   nerrs=0;
+    Point stones[BOARDSIZE], libs[BOARDSIZE];
+
+    // Check points where there is no stone
+    if (point_color(pos,pt) == OUT) {
+        if (point_block(pos, pt) == 0)
+            return 1;
+        else {
+            sprintf(buf,"Wrong block number %d at %s (which is OUT)", b,
+                                                        str_coord(pt, str));
+            log_fmt_s('E', buf, NULL);
+            return 0;
+        }
+    }
+    if (point_color(pos,pt) == EMPTY) {
+        if (point_block(pos, pt) == 0)
+            return 1;
+        else {
+            sprintf(buf,"Wrong block number %d at %s (which is EMPTY)", b,
+                                                        str_coord(pt, str));
+            log_fmt_s('E', buf, NULL);
+            return 0;
+        }
+    }
+
+    // Check point where there is a stone
+    if (point_block(pos, pt) == 0) {
+        sprintf(buf,"Wrong block number %d at %s (which is NOT EMPTY)", b,
+                                                           str_coord(pt, str));
+        log_fmt_s('E', buf, NULL);
+        if(nerrs++ > 10) return 0;
+    }
+    compute_block(pos, pt, stones, libs, 256);
+
+    // Global verification
+    if (block_size(pos,b) != slist_size(stones)) {
+        sprintf(buf,"Wrong size of block %d at %s (%d instead of %d)",
+                b, str_coord(pt, str), pos->size[b], slist_size(stones));
+        log_fmt_s('E', buf, NULL);
+        if(nerrs++ > 10) return 0;
+    }
+    if (block_nlibs(pos,b) != slist_size(libs)) {
+        sprintf(buf,"Wrong nlibs of block %d at %s (%d instead of %d)",
+                b, str_coord(pt, str), block_nlibs(pos,b), slist_size(libs));
+        log_fmt_s('E', buf, NULL);
+        if(nerrs++ > 10) return 0;
+    }
+    if (block_nlibs(pos,b) ==0) {
+        sprintf(buf,"Error block %d(%s) with 0 liberty", b, str_coord(pt, str));
+        log_fmt_s('E', buf, NULL);
+        if(nerrs++ > 10) return 0;
+    }
+
+    // Detailed check of stones
+    b = point_block(pos,pt);
+    FORALL_IN_SLIST(stones, i) {
+        if (point_block(pos,i) != b) {
+            sprintf(buf,"Invalid block id (%d) at point %s ",
+                    point_block(pos,i), str_coord(i, str));
+            log_fmt_s('E', buf, NULL);
+            if(nerrs++ > 10) return 0;
+        }
+    }
+
+    // Detailed check of liberties
+    FORALL_IN_SLIST(libs, l) {
+        int k = (l-N)>>5, r = (l-N)&31;
+        if ((pos->libs[b][k] & (1<<r)) == 0) {
+            char str1[8];
+            sprintf(buf,"Liberty %s not set for block %d(%s) ",
+                                  str_coord(l, str), b, str_coord(pt, str1));
+            log_fmt_s('E', buf, NULL);
+            if(nerrs++ > 10) return 0;
+        }
+    }
+
+    return nerrs==0;    // OK if nerrs == 0
+}
+
+int blocks_OK(Position *pos, Point pt)
+// Return 1 (True) if block at point pt and blocks in contact with pt are OK
+{
+    Block b=pos->block[pt];
+    int   k;
+    Point n;
+    if (check_block(pos, pt)==0) return 0;
+
+    FORALL_NEIGHBORS(pos, pt, k, n)
+        if (pos->block[n] != b && check_block(pos, n)==0) return 0;
+    return 1;               // if all tests succeed blocks around pt are OK
 }
 
 //============================= debug subcommands =============================
@@ -99,8 +237,8 @@ void print_marker(Position *pos, Mark *marker)
 char* debug(Position *pos) 
 {
     char *command = strtok(NULL," \t\n"), *ret="";
-    char *known_commands = "\nenv8\nfix_atari\ngen_playout\nmatch_pat3\n"
-                           "match_pat\nplayout\nprint_mark\nsavepos\nsetpos\n";
+    char *known_commands = "\nblocks_OK\nenv8\nfix_atari\ngen_playout\n"
+        "ko\nmatch_pat3\nmatch_pat\nplayout\nprint_mark\nsavepos\nsetpos\n";
     int  amaf_map[BOARDSIZE], owner_map[BOARDSIZE];
     Info sizes[BOARDSIZE];
     Point moves[BOARDSIZE];
@@ -109,7 +247,7 @@ char* debug(Position *pos)
         char *str = strtok(NULL, " \t\n");
         while (str != NULL) {
             Point pt = parse_coord(str);
-            if (pos->color[pt] == '.')
+            if (point_color(pos,pt) == EMPTY)
                 ret = play_move(pos, pt);        // suppose alternate play
             else if (pt == PASS_MOVE)
                 ret = pass_move(pos);
@@ -125,8 +263,37 @@ char* debug(Position *pos)
         fclose(f);
         ret = "";
     }
-    else if (strcmp(command, "playout") == 0)
+    else if (strcmp(command, "playout") == 0) {
         mcplayout(pos, amaf_map, owner_map, 1);
+    }
+    else if (strcmp(command, "blocks_OK") == 0) {
+        char *str = strtok(NULL, " \t\n");
+        if(str == NULL) ret = "Error missing point";
+        else {
+            Point pt = parse_coord(str);
+            if (blocks_OK(pos, pt)==1)
+                ret = "true";
+            else
+                ret = "false";
+        }
+    }
+    else if (strcmp(command, "libs") == 0) {
+        char *str = strtok(NULL, " \t\n");
+        if(str == NULL) ret = "Error missing block";
+        else {
+            Block b = atoi(str);
+            Point libs[BOARDSIZE];
+            block_compute_libs(pos, b, libs);
+            ret = slist_str_as_point(libs);
+        }
+    }
+    else if (strcmp(command, "ko") == 0) {
+        if (pos->ko)
+            str_coord(pos->ko, buf);
+        else
+            buf[0] = 0;
+        ret = buf;
+    }
     else if (strcmp(command, "gen_playout") == 0) {
         char *suggestion = strtok(NULL, " \t\n");
         if (suggestion != NULL) {
@@ -162,19 +329,18 @@ char* debug(Position *pos)
         if (str == NULL)
             return ret = "Error -- point missing";
         Point pt = parse_coord(str);
-        if (pos->color[pt]!='x' && pos->color[pt]!='X') {
+        if (!point_is_stone(pos,pt)) {
             ret ="Error given point not occupied by a stone";
             return ret;
         }
         is_atari = fix_atari(pos,pt, SINGLEPT_NOK, TWOLIBS_TEST,0,moves, sizes);
-        slist_str_as_point(moves);
-        int l = strlen(buf);
-        for (int k=l+1 ; k>=0 ; k--) buf[k+1] = buf[k];
+        ret = slist_str_as_point(moves);
+        int l = strlen(ret);
+        for (int k=l+1 ; k>=0 ; k--) ret[k+1] = ret[k];
         if (l>0)
-            buf[1] = ' ';
-        if (is_atari) buf[0] = '1';
-        else          buf[0] = '0';
-        ret = buf;
+            ret[1] = ' ';
+        if (is_atari) ret[0] = '1';
+        else          ret[0] = '0';
     }
     else if (strcmp(command, "env8") == 0) {
         char *str = strtok(NULL, " \t\n");
@@ -195,5 +361,10 @@ char* debug(Position *pos)
     }
     else if (strcmp(command, "help") == 0)
         ret = known_commands;
+    else {
+        sprintf(buf, "unknown debug subcommand - %s", command);
+        ret = buf;
+    }
+        
     return ret;
 }
