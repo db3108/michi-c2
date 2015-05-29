@@ -46,7 +46,7 @@
   // --------------------- Efficient/Non portable definitions -----------------
   #ifdef __GNUC__    
     #include <x86intrin.h>       // for INTEL SSE intrinsics
-    __INLINE__ int popcnt_u32(unsigned int m32) { return _mm_popcnt_u32(m32);}
+    __INLINE__ int popcnt_u32(unsigned int m32) { return __builtin_popcount(m32);}
     __INLINE__ int bsf_u32(unsigned int m32) { return  __builtin_ctz(m32);} 
   #elif  xxxxxxx
     // If useful : add here new implementation for another architecture
