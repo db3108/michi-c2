@@ -661,7 +661,7 @@ void copy_to_large_board(Position *pos)
 }
 
 // Code: ------------------------- Public functions ---------------------------
-void init_large_patterns(void)
+void init_large_patterns(const char *prob, const char *spat)
 // Initialize all this stuff
 {
     FILE *fspat, *fprob;    // Files containing large patterns
