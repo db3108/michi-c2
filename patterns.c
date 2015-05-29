@@ -432,7 +432,7 @@ void init_zobrist_hashdata(void)
 }
   
 unsigned long zobrist_hash(char *pat) {
-    int l = strlen(pat);
+    int l = (int)strlen(pat);
     unsigned long k=0;
     for (int i=0 ; i<l ; i++) {
         k ^= zobrist_hashdata[i][color[pat[i]]];
@@ -523,7 +523,7 @@ void gridcular_enumerate(int p[8][141])
 
 void permute(int permutation[8][141],int i,char strpat[256],char strperm[256])
 {
-    int len = strlen(strpat);
+    int len = (int)strlen(strpat);
     for (int k=0 ; k<len ; k++)
         strperm[k] = strpat[permutation[i][k]];
     strperm[len] = 0;
@@ -557,7 +557,7 @@ int load_spat_file(FILE *f)
         if (buf[0] == '#') continue;
         sscanf(buf,"%d %d %s", &id, &d, strpat);
         npats++;
-        len = strlen(strpat);
+        len = (int)strlen(strpat);
         if (len > lenmax) {
             lenmax = len;
             idmax = id;
@@ -661,7 +661,7 @@ void copy_to_large_board(Position *pos)
 }
 
 // Code: ------------------------- Public functions ---------------------------
-void init_large_patterns(void)
+void init_large_patterns(const char *prob, const char *spat)
 // Initialize all this stuff
 {
     FILE *fspat, *fprob;    // Files containing large patterns
@@ -676,7 +676,7 @@ void init_large_patterns(void)
     patterns = calloc(LENGTH, sizeof(LargePat));
     probs = calloc(1064481, sizeof(float));
     log_fmt_s('I', "Loading pattern probs ...", NULL);
-    fprob = fopen("patterns.prob", "r");
+    fprob = fopen(prob, "r");
     if (fprob == NULL)
         log_fmt_s('w', "Cannot load pattern file:%s","patterns.prob");
     else {
@@ -684,7 +684,7 @@ void init_large_patterns(void)
         fclose(fprob);
     }
     log_fmt_s('I', "Loading pattern spatial dictionary ...", NULL);
-    fspat = fopen("patterns.spat", "r");
+    fspat = fopen(spat, "r");
     if (fspat == NULL)
         log_fmt_s('w', "Warning: Cannot load pattern file:%s","patterns.spat");
     else {

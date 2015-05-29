@@ -335,7 +335,7 @@ char* debug(Position *pos)
         }
         is_atari = fix_atari(pos,pt, SINGLEPT_NOK, TWOLIBS_TEST,0,moves, sizes);
         ret = slist_str_as_point(moves);
-        int l = strlen(ret);
+        int l = (int)strlen(ret);
         for (int k=l+1 ; k>=0 ; k--) ret[k+1] = ret[k];
         if (l>0)
             ret[1] = ' ';

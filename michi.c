@@ -1005,7 +1005,7 @@ int michi_console(int argc, char *argv[])
     setbuf(flog, NULL);                // guarantees that log is unbuffered
     log_fmt_i('I',"Size of struct Position = %d bytes", sizeof(Position));
     make_pat3set();
-    init_large_patterns();
+    init_large_patterns("patterns.prob", "patterns.spat");
     already_suggested = calloc(1, sizeof(Mark));
     mark1 = calloc(1, sizeof(Mark)); mark2 = calloc(1, sizeof(Mark));
     Position *pos = malloc(sizeof(Position));
