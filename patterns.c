@@ -432,7 +432,7 @@ void init_zobrist_hashdata(void)
 }
   
 unsigned long zobrist_hash(char *pat) {
-    int l = strlen(pat);
+    int l = (int)strlen(pat);
     unsigned long k=0;
     for (int i=0 ; i<l ; i++) {
         k ^= zobrist_hashdata[i][color[pat[i]]];
@@ -523,7 +523,7 @@ void gridcular_enumerate(int p[8][141])
 
 void permute(int permutation[8][141],int i,char strpat[256],char strperm[256])
 {
-    int len = strlen(strpat);
+    int len = (int)strlen(strpat);
     for (int k=0 ; k<len ; k++)
         strperm[k] = strpat[permutation[i][k]];
     strperm[len] = 0;
@@ -557,7 +557,7 @@ int load_spat_file(FILE *f)
         if (buf[0] == '#') continue;
         sscanf(buf,"%d %d %s", &id, &d, strpat);
         npats++;
-        len = strlen(strpat);
+        len = (int)strlen(strpat);
         if (len > lenmax) {
             lenmax = len;
             idmax = id;
