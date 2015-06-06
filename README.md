@@ -11,14 +11,13 @@ The goals of the current project are to improve from this basis.
 The foreseen evolutions are :
 - improve the speed of the program
   * parallelization,
-  * fast board implementation with incremental update of blocks and liberties,
 - add some functionalities that will increase the usability of the program, eg. 
-  * time management, 
-  * variable parameters modifiable by gtp commands for CLOP tuning, 
   * variable boardsize, 
+  * time management,
   * "intelligent" early passing 
 
-WARNING ! The current version is a TEMPORARY version (see ChangeLog) whose only purpose is to publish the new internal interfaces of michi-c.
+There is still room for improvements in term of speed but I focus first on the
+other modifications.
 
 Michi-c2 is distributed under the MIT licence.  Now go forth, hack and peruse!
 
@@ -76,4 +75,3 @@ $ ./michi tsdebug
 
 this will run 1 MCTS tree search.
 
-Up to now, all the parameters are hard coded in the michi.h file, which must be modified if you want to play with them in order to improve the quality of play.

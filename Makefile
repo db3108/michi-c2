@@ -1,16 +1,16 @@
 
 # For compiling portable code
-GENCODE=-DPORTABLE
+#GENCODE=-DPORTABLE
 # For compiling more efficient code for a given compiler/processor architecture
-#GENCODE=
+GENCODE=
 
 # Normal compilation options for developping
 #CFLAGS= -DNDEBUG -g -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 #CFLAGS= -g -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
-CFLAGS= -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
+#CFLAGS= -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 
 # Normal compilation options for production
-#CFLAGS= -DNDEBUG -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
+CFLAGS= -DNDEBUG -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 
 # Compilation options for running valgrind
 #CFLAGS=-O0 -g -march=native -msse4 -Wall -std=gnu99
@@ -18,7 +18,7 @@ CFLAGS= -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 # Compilation options for profiling with gprof
 #CFLAGS=-pg -O3 -DNDEBUG -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 
-OBJS=board.o patterns.o debug.o main.o
+OBJS=params.o board.o patterns.o debug.o main.o
 BIN=michi
 
 all: $(BIN) 

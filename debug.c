@@ -83,6 +83,42 @@ int env4_OK(Position *pos)
     return 1;
 }
 
+int cmpint(const void *i, const void *j)
+{
+    return *(int *)i - *(int *)j;
+}
+
+__INLINE__ void slist_sort(Slist l) {qsort(l+1,l[0],sizeof(Info),&cmpint);}
+
+void compute_block(Position *pos, Point pt, Slist stones, Slist libs, int nlibs)
+// Compute block at pt : list of stones and list of liberties
+// Return early when nlibs liberties are found
+{
+    Color color=point_color(pos, pt);
+    int   head=2, k, tail=1;
+    Point n;
+
+    mark_init(mark1); slist_clear(libs);
+    stones[1] = pt; mark(mark1, pt);
+    while(head>tail) {
+        pt = stones[tail++];
+        FORALL_NEIGHBORS(pos, pt, k, n)
+            if (!is_marked(mark1, n)) {
+                mark(mark1, n);
+                if (point_color(pos, n) == color)    stones[head++] = n;
+                else if (point_color(pos, n) == EMPTY) {
+                    slist_push(libs, n);
+                    if (slist_size(libs) >= nlibs) goto finished;
+                }
+            }
+    }
+finished:
+    slist_sort(libs);
+    stones[0] = head-1;
+    mark_release(mark1);
+}
+
+
 int check_block(Position *pos, Point pt)
 // return 1 if block at point pt is OK, else 0
 {
@@ -124,11 +160,13 @@ int check_block(Position *pos, Point pt)
 
     // Global verification
     if (block_size(pos,b) != slist_size(stones)) {
+        if (slist_size(stones)>255 && block_size(pos,b)==255) goto next_check;
         sprintf(buf,"Wrong size of block %d at %s (%d instead of %d)",
                 b, str_coord(pt, str), pos->size[b], slist_size(stones));
         log_fmt_s('E', buf, NULL);
         if(nerrs++ > 10) return 0;
     }
+next_check:
     if (block_nlibs(pos,b) != slist_size(libs)) {
         sprintf(buf,"Wrong nlibs of block %d at %s (%d instead of %d)",
                 b, str_coord(pt, str), block_nlibs(pos,b), slist_size(libs));
@@ -283,7 +321,7 @@ char* debug(Position *pos)
         else {
             Block b = atoi(str);
             Point libs[BOARDSIZE];
-            block_compute_libs(pos, b, libs);
+            block_compute_libs(pos, b, libs, BOARDSIZE);
             ret = slist_str_as_point(libs);
         }
     }

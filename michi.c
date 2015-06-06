@@ -89,7 +89,7 @@ Short bibliography
 
 void usage() {
     fprintf(stderr, "\n\nusage: michi [-z SEED] [command]\n\n"
-                    "where  command = gtp|mcdebug|mcbenchmark|tsdebug\n"
+                    "where  command = gtp|mcdebug [nsims]|mcbenchmark|tsdebug\n"
                     "       SEED    = > 0 (fixed seed) or 0 (random seed)\n");
     exit(-1);
 }
@@ -106,7 +106,6 @@ Mark         *mark1, *mark2, *already_suggested;
 unsigned int idum=1;
 char         buf[BUFLEN];
 Point        allpoints[BOARDSIZE];
-int          PRIOR_CFG[] =     {24, 22, 8};
 
 //================================== Code =====================================
 // Utilities
@@ -185,13 +184,13 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
 {
     Block b = point_block(pos, pt);
     int   in_atari=1, maxlibs=3;
-    Point stones[BOARDSIZE], l, libs[5], blocks[256], blibs[5];
+    Point l, libs[5], blocks[256], blibs[5];
 
     slist_clear(moves); slist_clear(sizes);
-    compute_block(pos, pt, stones, libs, maxlibs);
-    if (singlept_ok && slist_size(stones) == 1) return 0;
-    if (slist_size(libs) >= 2) { 
-        if (twolib_test && slist_size(libs) == 2 && slist_size(stones) > 1) {
+    if (singlept_ok && block_size(pos, b) == 1) return 0;
+    if (block_nlibs(pos,b) >= 2) { 
+        if (twolib_test && block_nlibs(pos,b) == 2 && block_size(pos,b) > 1) {
+            block_compute_libs(pos, b, libs, maxlibs);
             if (twolib_edgeonly
                    && ((line_height(libs[1]))>0 || (line_height(libs[2]))>0)) {
                 // no expensive ladder check
@@ -204,26 +203,27 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
                 Point ladder_attack = read_ladder_attack(pos, pt, libs);
                 if (ladder_attack) {
                     if(slist_insert(moves, ladder_attack))
-                        slist_push(sizes, slist_size(stones));
+                        slist_push(sizes, block_size(pos, b));
                 }
             }
         } 
         return 0;  
     }
 
+    block_compute_libs(pos, b, libs, maxlibs);
     Color other=color_other(pos->to_play);
     if (point_color(pos, pt) == other) { 
         // - this is opponent's group, that's enough to capture it
         if (slist_insert(moves, libs[1])) 
-            slist_push(sizes, slist_size(stones));
+            slist_push(sizes, block_size(pos, b));
         return in_atari;
     }
 
     // This is our group and it is in atari
     // Before thinking about defense, what about counter-capturing a neighbor ?
-    make_list_neighbor_blocks_in_atari(pos, b, blocks);
+    make_list_neighbor_blocks_in_atari(pos, b, blocks, pt);
     FORALL_IN_SLIST(blocks, b1) {
-        block_compute_libs(pos, b1, blibs);
+        block_compute_libs(pos, b1, blibs, 1);
         if (slist_insert(moves, blibs[1]))
             slist_push(sizes, block_size(pos, b1));
     }
@@ -235,16 +235,21 @@ int fix_atari(Position *pos, Point pt, int singlept_ok
     char *ret = play_move(&escpos, l);
     if (ret[0]!=0)
         return 1;     // oops, suicidal move
-    compute_block(&escpos, l, stones, libs, maxlibs);  
-    if (slist_size(libs) >= 2) {
+    b = point_block(&escpos, l);
+    if (block_nlibs(&escpos,b) >= 2) {
         // Good, there is still some liberty remaining - but if it's just the 
         // two, check that we are not caught in a ladder... (Except that we 
         // don't care if we already have some alternative escape routes!)
-        if (slist_size(moves)>1 
-        || (slist_size(libs)==2 && read_ladder_attack(&escpos,l,libs) == 0)
-        || (slist_size(libs)>=3))
+        if (slist_size(moves)>1 || block_nlibs(&escpos,b)>=3) { 
             if (slist_insert(moves, l))
-                slist_push(sizes, slist_size(stones));
+                slist_push(sizes, block_size(&escpos, b));
+        }
+        else if (block_nlibs(&escpos,b)==2) {
+            block_compute_libs(&escpos,b,libs,2);
+            if (read_ladder_attack(&escpos,l,libs) == 0)
+                if (slist_insert(moves, l))
+                    slist_push(sizes, block_size(&escpos, b));
+        }
     }
     return in_atari;
 }
@@ -309,6 +314,44 @@ int gen_playout_moves_random(Position *pos, Point moves[BOARDSIZE], Point i0)
         slist_push(moves, i); 
     }
     return slist_size(moves);
+}
+
+Point choose_random_move(Position *pos, Point i0, int disp)
+// Replace the sequence gen_playout_moves_random(); choose_from()
+{
+    char   *ret;
+    Color c=pos->to_play;
+    Info     sizes[20];
+    Point    ds[20], i=i0, move=PASS_MOVE;
+    Position saved_pos = *pos;
+
+    do {
+        if (point_color(pos,i) != EMPTY) goto not_found; 
+        if (is_eye(pos,i) == c) goto not_found;  // ignore true eyes for player
+        ret = play_move(pos, i);
+        if (ret[0] == 0) {    // move OK
+            move = i;
+            // check if the suggested move did not turn out to be a self-atari
+            int r = random_int(10000), tstrej;
+            tstrej = r<=10000.0*PROB_RSAREJECT;
+            if (tstrej) {
+                slist_clear(ds); slist_clear(sizes);
+                fix_atari(pos, i, SINGLEPT_OK, TWOLIBS_TEST, 1, ds, sizes);
+                if (slist_size(ds) > 0) {
+                    if(disp) fprintf(stderr, "rejecting self-atari move %s\n",
+                                                           str_coord(i, buf));
+                    *pos = saved_pos; // undo move;
+                    move = PASS_MOVE;
+                    goto not_found;
+                }
+            }
+            break;
+        }
+not_found:
+        i++;
+        if (i >= BOARD_IMAX) i = BOARD_IMIN - 1;
+    } while (i!=i0);
+    return move;
 }
 
 Point choose_from(Position *pos, Slist moves, char *kind, int disp)
@@ -380,7 +423,7 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp)
     while (passes < 2 && pos->n < MAX_GAME_LEN) {
         //c2 = pos->n;
         move = 0;
-        if(disp) print_pos(pos, stdout, NULL);
+        if(disp) print_pos(pos, stderr, NULL);
         // We simply try the moves our heuristics generate, in a particular
         // order, but not with 100% probability; this is on the border between
         // "rule-based playouts" and "probability distribution playouts".
@@ -398,8 +441,7 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[], int disp)
             if((move=choose_from(pos, moves, "pat3", disp)) != PASS_MOVE) 
                 goto found;
             
-        gen_playout_moves_random(pos, moves, BOARD_IMIN-1+random_int(N*(N+1)));
-        move=choose_from(pos, moves, "random", disp);
+        move = choose_random_move(pos, BOARD_IMIN-1+random_int(N*(N+1)), disp);
 found:
         if (move == PASS_MOVE) {      // No valid move : pass
             pass_move(pos);
@@ -444,7 +486,7 @@ void expand(TreeNode *tree)
     tree->children = calloc(slist_size(moves)+1, sizeof(TreeNode*));
     FORALL_IN_SLIST(moves, pt) {
         pos2 = tree->pos;
-        assert(point_color(&tree->pos, pt) == EMPTY);
+        //assert(point_color(&tree->pos, pt) == EMPTY);
         char* ret = play_move(&pos2, pt);
         if (ret[0] != 0) continue;
         // pt is a legal move : we build a new node for it
@@ -875,11 +917,21 @@ void begin_game(void) {
     log_fmt_s('I', buf, NULL);
 }
 
+char* gogui_analyse_commands(void)
+{
+    return "param/Params General/param_general\n"
+           "param/Params Tree Policy/param_tree\n" 
+           "param/Params Playouts/param_playout\n";
+}
+
 void gtp_io(void)
 {
     char line[BUFLEN], *cmdid, *command, msg[BUFLEN], *ret;
-    char *known_commands="\ncputime\ndebug subcmd\ngenmove\nhelp\nknown_command"
-    "\nlist_commands\nname\nplay\nprotocol_version\nquit\nversion\n";
+    char *known_commands="\ncputime\ndebug subcmd\ngenmove\n"
+        "gogui-analyze_commands\nhelp\nknown_command\nkomi\nlist_commands\n"
+        "name\nparam_general\nparam_playout\nparam_tree\nplay\n"
+        "protocol_version\nquit\nversion\n"
+        ;
     int      game_ongoing=1, i;
     int      *owner_map=calloc(BOARDSIZE, sizeof(int));
     TreeNode *tree;
@@ -960,8 +1012,27 @@ void gtp_io(void)
             else
                 ret = "";
         }
+        else if (strcmp(command,"komi") == 0) {
+            char *str = strtok(NULL, " \t\n");
+            if(str == NULL) {
+                ret = "Error - a komi value is expected";
+                goto finish_command;
+            }
+            if(sscanf(str, "%f", &pos->komi) == 1)
+                ret = "";
+            else
+                ret = "Error - invalid value";
+        }
         else if (strcmp(command,"debug") == 0)
             ret = debug(pos);
+        else if (strcmp(command,"gogui-analyze_commands") == 0)
+            ret = gogui_analyse_commands();
+        else if (strcmp(command,"param_general") == 0)
+            ret = param_general();
+        else if (strcmp(command,"param_playout") == 0)
+            ret = param_playout();
+        else if (strcmp(command,"param_tree") == 0)
+            ret = param_tree();
         else if (strcmp(command,"name") == 0)
             ret = "michi-c";
         else if (strcmp(command,"version") == 0)
@@ -1019,11 +1090,14 @@ int michi_console(int argc, char *argv[])
         if (point_color(pos,pt) == EMPTY) slist_push(allpoints,pt);
 
     // check if the user gave a seed for the random generator
-    if (argc == 3) {
-        sscanf(argv[1], "-z%u", &idum);
-        if (idum == 0)
-            idum = true_random_seed();
-        command = argv[2];
+    if (argc == 3) {  // "michi -z command" or "michi mcdebug nsims"
+        if (sscanf(argv[1], "-z%u", &idum)>0) {
+            if (idum == 0)
+                idum = true_random_seed();
+            command = argv[2];
+        }
+        else
+            command = argv[1];
     }
     else
         command = argv[1];
@@ -1033,9 +1107,12 @@ int michi_console(int argc, char *argv[])
     else if (strcmp(command,"gtp") == 0)
         gtp_io();
     else if (strcmp(command,"mcdebug") == 0) {
-        for (int i=0 ; i<10 ; i++) {
+        idum = 1;
+        int nsims = 1;
+        if (argc ==3) nsims = atoi(argv[2]);
+        for (int i=0 ; i<nsims ; i++) {
             c1 = i;
-            fprintf(stderr, "%lf\n", mcplayout(pos, amaf_map, owner_map, 0)); 
+            fprintf(stderr, "%lf\n", mcplayout(pos, amaf_map, owner_map, 1)); 
             fprintf(stderr,"mcplayout %d\n", i);
             empty_position(pos);
         }

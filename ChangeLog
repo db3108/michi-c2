@@ -2,6 +2,17 @@
 -- ChangeLog for the michi-c program
 ------------------------------------
 
+1.2 Released June, 6 2015
+- modifications by Horace Ho for IOS app
+- removal of all calls to compute_block()
+- bug correction (saturation of blocks size to 255)
+- add a parameter (nsims) to michi mcdebug
+- choose_random_move() stops as soon as a playable move is found
+- plays about 2.5 faster in 19x19 than version 1.0 (mcplayout 3 times faster)
+- add gtp commands to modify the parameters of the engine
+- add gtp command to modify komi
+- boardsize still fixed at compilation time
+
 1.1 Released May, 28 2015 (Temporary version)
 
 - functional but not fully validated nor optimized

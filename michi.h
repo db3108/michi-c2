@@ -9,7 +9,7 @@
 //========================= Definition of Data Structures =====================
 
 // --------------------------- Board Constants --------------------------------
-#define N          13
+#define N          19
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
@@ -35,28 +35,14 @@
 #define TWOLIBS_TEST_NO   0
 #define TWOLIBS_EDGE_ONLY 1
 // ---------------------------- MCTS Constants --------------------------------
-#define N_SIMS     1400
-#define RAVE_EQUIV 3500
-#define EXPAND_VISITS 8
-#define PRIOR_EVEN         10   // should be even number; 0.5 prior 
-#define PRIOR_SELFATARI    10   // negative prior
-#define PRIOR_CAPTURE_ONE  15
-#define PRIOR_CAPTURE_MANY 30
-#define PRIOR_PAT3         10
-#define PRIOR_LARGEPATTERN 100  // most moves have relatively small probability
-extern  int PRIOR_CFG[];   // priors for moves in cfg dist. 1, 2, 3
-#define LEN_PRIOR_CFG      (sizeof(PRIOR_CFG)/sizeof(int))
-#define PRIOR_EMPTYAREA    10
-#define REPORT_PERIOD  200
-#define PROB_HEURISTIC_CAPTURE 0.9   // probability of heuristic suggestions
-#define PROB_HEURISTIC_PAT3    0.95  // being taken in playout
-#define PROB_SSAREJECT 0.9 // prob of rejecting suggested self-atari in playout
-#define PROB_RSAREJECT 0.5 // prob of rejecting random self-atari in playout
-                           // this is lower than above to allow nakade
-#define RESIGN_THRES     0.2
-#define FASTPLAY20_THRES 0.8 //if at 20% playouts winrate is >this, stop reading
-#define FASTPLAY5_THRES  0.95 //if at 5% playouts winrate is >this, stop reading
-
+extern int   N_SIMS, RAVE_EQUIV, EXPAND_VISITS;
+extern int   PRIOR_EVEN, PRIOR_SELFATARI, PRIOR_CAPTURE_ONE, PRIOR_CAPTURE_MANY;
+extern int   PRIOR_PAT3, PRIOR_LARGEPATTERN, LEN_PRIOR_CFG, PRIOR_EMPTYAREA;
+extern int   PRIOR_CFG[], LEN_PRIOR_CFG;
+extern int   REPORT_PERIOD;
+extern double PROB_HEURISTIC_CAPTURE, PROB_HEURISTIC_PAT3;
+extern double PROB_SSAREJECT, PROB_RSAREJECT;
+extern double RESIGN_THRES, FASTPLAY20_THRES, FASTPLAY5_THRES;
 //------------------------------- Data Structures -----------------------------
 typedef unsigned char Byte;
 typedef unsigned char Block;
@@ -127,9 +113,7 @@ char* debug(Position *pos);
 int   env4_OK(Position *pos);
 int   blocks_OK(Position *pos, Point pt);
 //--------------------------- Functions in board.c ----------------------------
-void block_compute_libs(Position *pos, Block b, Slist libs);
-void compute_block(Position *pos, Point pt, Slist stones, Slist libs,
-                                                                     int nlibs);
+void block_compute_libs(Position *pos, Block b, Slist libs, int max_libs);
 void compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE]);
 Byte compute_env4(Position *pos, Point pt, int offset);
 int empty_area(Position *pos, Point pt, int dist);
@@ -138,7 +122,7 @@ char is_eye(Position *pos, Point pt);
 char is_eyeish(Position *pos, Point pt);
 int line_height(Point pt);
 void make_list_last_moves_neighbors(Position *pos, Slist points);
-void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks);
+void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks, Point pt);
 char *pass_move(Position *pos);
 char *play_move(Position *pos, Point pt);
 //-------------------------- Functions in michi.c -----------------------------
@@ -156,6 +140,10 @@ void print_pos(Position *pos, FILE *f, int *owner_map);
 void print_tree_summary(TreeNode *tree, int sims, FILE *f);
 char* slist_str_as_point(Slist l);
 char* str_coord(Point pt, char str[5]);
+//-------------------------- Functions in params.c ----------------------------
+char* param_general(void);
+char* param_playout(void);
+char* param_tree(void);
 //------------------------- Functions in patterns.c ---------------------------
 void   make_pat3set(void);
 char*  make_list_pat3_matching(Position *pos, Point pt);

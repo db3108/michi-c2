@@ -25,8 +25,8 @@
  * The representation of the board is 1D (as described in [Mueller 2002). This
  * means that the position of an intersection (or point) is a small integer 
  * that is used as index in various arrays containing attributes of this point.
- * A small boarder (1 point large) is added around the board to simplify the 
- * code by avoiding a lot of tests. Each point of this boarder has color OUT.
+ * A small border (1 point large) is added around the board to simplify the 
+ * code by avoiding a lot of tests. Each point of this border has color OUT.
  * =========================================================================*/
 
 #ifndef NDEBUG
@@ -139,40 +139,6 @@ void remove_stone(Position *pos, Point pt)
 }
 
 //===================================== Blocks ================================
-void compute_block(Position *pos, Point pt, Slist stones, Slist libs, int nlibs)
-// Compute block at pt : list of stones and list of liberties
-// Return early when nlibs liberties are found
-{
-    Color color=point_color(pos, pt);
-    int   head=2, k, tail=1;
-    Point n;
-
-    mark_init(mark1); slist_clear(libs);
-    stones[1] = pt; mark(mark1, pt);
-    while(head>tail) {
-        pt = stones[tail++];
-        FORALL_NEIGHBORS(pos, pt, k, n)
-            if (!is_marked(mark1, n)) {
-                mark(mark1, n);
-                if (point_color(pos, n) == color)    stones[head++] = n;
-                else if (point_color(pos, n) == EMPTY) {
-                    slist_push(libs, n);
-                    if (slist_size(libs) >= nlibs) goto finished;
-                }
-            }
-    }
-finished:
-    stones[0] = head-1;
-    mark_release(mark1);
-}
-
-int capture_block(Position *pos, Slist stones)
-{
-    FORALL_IN_SLIST(stones, pt) remove_stone(pos, pt);
-    assert(env4_OK(pos));
-    return slist_size(stones);
-}
-
 __INLINE__ Block new_blkid(Position *pos)
 {
     int b;
@@ -215,7 +181,7 @@ __INLINE__ int block_count_libs(Position *pos, Block b)
 }
 
 void
-block_compute_libs(Position *pos, Block b, Slist libs)
+block_compute_libs(Position *pos, Block b, Slist libs, int max_libs)
 // Return the list of Block b libs. 
 // Memory for libs should have been allocated by the caller.
 {
@@ -228,15 +194,31 @@ block_compute_libs(Position *pos, Block b, Slist libs)
             j = bsf_u32(m32);
             m32 ^= (1<<j);
             slist_push(libs, N+k*8*sizeof(Libs)+j);
+            if (slist_size(libs) > max_libs) return;
         }
     }
 }
 
-void block_make_list_of_points(Position *pos, Block b, Slist points)
+void block_make_list_of_points(Position *pos, Block b, Slist points, Point pt)
 {
-    slist_clear(points);
-    FORALL_POINTS(pos, pt)
-        if (point_block(pos,pt) == b) slist_push(points, pt);
+    //slist_clear(points);
+    //FORALL_POINTS(pos, pt)
+    //    if (point_block(pos,pt) == b) slist_push(points, pt);
+    int   head=2, k, tail=1;
+    Point n;
+
+    mark_init(mark1);
+    points[1] = pt; mark(mark1, pt);
+    while(head>tail) {
+        pt = points[tail++];
+        FORALL_NEIGHBORS(pos, pt, k, n)
+            if (!is_marked(mark1, n)) {
+                mark(mark1, n);
+                if (point_block(pos, n) == b)    points[head++] = n;
+            }
+    }
+    points[0] = head-1;
+    mark_release(mark1);
 }
 
 __INLINE__ int block_capture(Position *pos, Block b, Point pt)
@@ -298,7 +280,11 @@ __INLINE__ void block_merge(Position *pos, Block b1, Block b2)
     FORALL_POINTS(pos, pt)
         if (point_block(pos, pt) == b2)
             pos->block[pt] = b1;
-    pos->size[b1] += pos->size[b2];
+    int nstones = (int) pos->size[b1] + (int) pos->size[b2];
+    if (nstones<256)
+        pos->size[b1] = nstones;
+    else
+        pos->size[b1] = 255;
 
     // Merge libs
     for (int k=0 ; k<LIBS_SIZE ; k++) {
@@ -460,7 +446,7 @@ merge2:
     block_merge(pos, b1, b2);
     pos->nlibs[b1] = block_count_libs(pos, b1);
 extend:
-    pos->size[b1]++;
+    if (pos->size[b1]<255) pos->size[b1]++;
     pos->block[pt] = b1;
     block_remove_lib_extend(pos, b1, pt);
 
@@ -493,7 +479,7 @@ char* empty_position(Position *pos)
 
     pos->komi = 7.5;
     pos->to_play = BLACK;
-    assert(env4_OK(pos));
+    //assert(env4_OK(pos));
     return "";              // result OK
 }
 
@@ -509,11 +495,11 @@ char* play_move(Position *pos, Point pt)
 
     // Finish update of the position (swap color)
     (pos->n)++;
-    assert(env4_OK(pos));
+    //assert(env4_OK(pos));
     pos->last2 = pos->last;
     pos->last  = pt;
     pos->to_play = color_other(pos->to_play);
-    michi_assert(pos, blocks_OK(pos, pt));
+    //michi_assert(pos, blocks_OK(pos, pt));
     return "";          // Move OK
 }
 
@@ -550,7 +536,7 @@ void make_list_last_moves_neighbors(Position *pos, Slist points)
         slist_insert(points, n);     // insert n if it is not already in points
 }
 
-void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks) 
+void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks, Point pt) 
 // Return a list of (opponent) blocks in contact with block b
 {
     Color c;
@@ -558,7 +544,7 @@ void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks)
     Point n, stones[BOARDSIZE];
 
     slist_clear(blocks);
-    block_make_list_of_points(pos, b, stones);
+    block_make_list_of_points(pos, b, stones, pt);
     c = color_other(point_color(pos, stones[1]));
 
     FORALL_IN_SLIST(stones, pt) {
@@ -597,7 +583,7 @@ void compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE])
                 cfg_map[n] = cfg_map[pt]+1;
             if (cfg_before < 0 || cfg_before > cfg_map[n]) {
                 fringe[head++] = n;
-                assert(head < 30*BOARDSIZE);
+                //assert(head < 30*BOARDSIZE);
             }
         }
     }
