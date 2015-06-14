@@ -1,8 +1,8 @@
 // params.c -- Variable parameters used by the michi program
 #include "michi.h"
 static char buf[2048];
-// ----------------------------- Initial Values -------------------------------
-int   N_SIMS             = 10000;
+// ----------------- Initial Values for playouts parameters -------------------
+int   N_SIMS             = 2000;
 int   RAVE_EQUIV         = 3500;
 int   EXPAND_VISITS      = 8;
 int   PRIOR_EVEN         = 10;   // should be even number; 0.5 prior 
@@ -14,16 +14,21 @@ int   PRIOR_LARGEPATTERN = 100;  // most moves have relatively small probability
 int   PRIOR_CFG[]        =     {24, 22, 8};
 int   LEN_PRIOR_CFG      = (sizeof(PRIOR_CFG)/sizeof(int));
 int   PRIOR_EMPTYAREA    = 10;
-int   REPORT_PERIOD      = 200;
 double PROB_HEURISTIC_CAPTURE = 0.9;   // probability of heuristic suggestions
 double PROB_HEURISTIC_PAT3    = 0.95;  // being taken in playout
 double PROB_SSAREJECT = 0.9;// prob of rejecting suggested self-atari in playout
 double PROB_RSAREJECT = 0.5;// prob of rejecting random self-atari in playout
                            // this is lower than above to allow nakade
-double RESIGN_THRES     = 0.2;
+// ----------------- Initial Values for general parameters --------------------
+int   play_until_the_end = 0;
+int   random_seed        = 1;
+int   REPORT_PERIOD      = 200;
+int   verbosity          = 2;
 double FASTPLAY20_THRES= 0.8;//if at 20% playouts winrate is >this, stop reading
 double FASTPLAY5_THRES = 0.95;//if at 5% playouts winrate is >this, stop reading
+double RESIGN_THRES     = 0.2;
 
+unsigned int idum        = 1;
 //==================================== Code ===================================
 
 #define PRINT_KEY_VALUE(p, fmt) sprintf(key_value, "%30s " #fmt "\n", #p, p); \
@@ -38,7 +43,7 @@ double FASTPLAY5_THRES = 0.95;//if at 5% playouts winrate is >this, stop reading
     }                                                                         \
 }
 
-char* param_playout(void) 
+char* param_playout() 
 // Implement gtp command that list or modify parameters of the playout policy
 {
     char *param = strtok(NULL," \t\n"), *ret=buf, key_value[80];
@@ -125,16 +130,34 @@ char* param_tree(void)
     return ret;
 }
 
+unsigned int true_random_seed(void)
+// return a true random seed (which depends on the time)
+{
+    unsigned int r1, r2, sec, day;
+    time_t tm=time(NULL);
+    struct tm *tcal=localtime(&tm);
+    sec  = tcal->tm_sec + 60*(tcal->tm_min + 60*tcal->tm_hour);
+    // day is a coarse (but sufficient for the current purpose) approximation 
+    day = tcal->tm_mday + 31*(tcal->tm_mon + 12*tcal->tm_year);
+    // Park & Miller random generator (same as qdrandom())
+    r1 =  (1664525*sec) + 1013904223;
+    r2 = (1664525*day) + 1013904223;
+    return (r1^r2);
+}
+
 char* param_general(void) 
 // Implement gtp command that list or modify general parameters
 {
     char *param = strtok(NULL," \t\n"), *ret=buf, key_value[80];
-    char *known_params = "\nREPORT_PERIOD\nRESIGN_THRES\n"
+    char *known_params = "\nverbosity\nREPORT_PERIOD\nRESIGN_THRES\n"
                          "FASTPLAY20_THRES\nFASTPLAY5_THRES\n";
 
     if (param == NULL) {    // List current values
         buf[0] = 0;
+        PRINT_KEY_VALUE(play_until_the_end, %d);
+        PRINT_KEY_VALUE(random_seed, %d);
         PRINT_KEY_VALUE(REPORT_PERIOD, %d);
+        PRINT_KEY_VALUE(verbosity, %d);
         PRINT_KEY_VALUE(RESIGN_THRES, %.2f);
         PRINT_KEY_VALUE(FASTPLAY20_THRES, %.2f);
         PRINT_KEY_VALUE(FASTPLAY5_THRES, %.2f);
@@ -143,8 +166,19 @@ char* param_general(void)
         ret = known_params;
     else if (strcmp(param, "list") == 0)
         ret = known_params;
+    else if (strcmp(param, "play_until_the_end") == 0)
+        READ_VALUE(play_until_the_end, %d)
+    else if (strcmp(param, "random_seed") == 0) {
+        READ_VALUE(random_seed, %d)
+        if (random_seed == 0)
+            idum = true_random_seed();
+        else
+            idum = random_seed;
+    }
     else if (strcmp(param, "REPORT_PERIOD") == 0)
         READ_VALUE(REPORT_PERIOD, %d)
+    else if (strcmp(param, "verbosity") == 0)
+        READ_VALUE(verbosity, %d)
     else if (strcmp(param, "RESIGN_THRES") == 0)
         READ_VALUE(RESIGN_THRES, %lf)
     else if (strcmp(param, "FASTPLAY20_THRES") == 0)

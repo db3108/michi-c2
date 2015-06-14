@@ -18,7 +18,7 @@ CFLAGS= -DNDEBUG -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscrip
 # Compilation options for profiling with gprof
 #CFLAGS=-pg -O3 -DNDEBUG -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 
-OBJS=params.o board.o patterns.o debug.o main.o
+OBJS=ui.o params.o board.o patterns.o debug.o main.o
 BIN=michi
 
 all: $(BIN) 

@@ -5,11 +5,12 @@
 #include <ctype.h>
 #include <assert.h>
 #include <math.h>
+#include <time.h>
 #include "non_portable.h"
 //========================= Definition of Data Structures =====================
 
 // --------------------------- Board Constants --------------------------------
-#define N          19
+#define N          13
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
@@ -74,6 +75,9 @@ typedef struct { // ---------------------- Go Position ------------------------
     Point last, last2;        // position of the last move and the move before 
     float komi;               // komi for the game
     int   caps[2];            // number of stones captured 
+    int   time_left;          // main time left: maintained internally
+    int   time_left_gtp;      // main time left: provided by time_left
+    int   time_init;          // main time: initialization by time_settings
 } Position;         // Go position
 
 typedef struct tree_node { // ------------ Monte-Carlo tree node --------------
@@ -103,15 +107,14 @@ extern Mark *already_suggested, *mark1, *mark2;
 extern unsigned int idum;
 extern FILE         *flog;                     // FILE to log messages
 extern int          c1,c2;                     // counters for messages
+extern int          verbosity;                 // 0, 1 or 2
+extern int          play_until_the_end;        // O or 1
+extern Point        allpoints[BOARDSIZE];
+extern float        nplayouts, nplayouts_per_second;
+extern float        start_playouts_sec, stop_playouts_sec;
+extern int          nplayouts_real;
 
 //================================== Code =====================================
-//-------------------------- Functions in debug.c -----------------------------
-void log_fmt_i(char type, const char *msg, int n);
-void log_fmt_p(char type, const char *msg, Point i);
-void log_fmt_s(char type, const char *msg, const char *s);
-char* debug(Position *pos);
-int   env4_OK(Position *pos);
-int   blocks_OK(Position *pos, Point pt);
 //--------------------------- Functions in board.c ----------------------------
 void block_compute_libs(Position *pos, Block b, Slist libs, int max_libs);
 void compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE]);
@@ -125,6 +128,13 @@ void make_list_last_moves_neighbors(Position *pos, Slist points);
 void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks, Point pt);
 char *pass_move(Position *pos);
 char *play_move(Position *pos, Point pt);
+//-------------------------- Functions in debug.c -----------------------------
+void log_fmt_i(char type, const char *msg, int n);
+void log_fmt_p(char type, const char *msg, Point i);
+void log_fmt_s(char type, const char *msg, const char *s);
+char* debug(Position *pos);
+int   env4_OK(Position *pos);
+int   blocks_OK(Position *pos, Point pt);
 //-------------------------- Functions in michi.c -----------------------------
 void dump_subtree(TreeNode *node,double thres,char *indent,FILE *f,int recurse);
 int fix_atari(Position *pos, Point pt, int singlept_ok
@@ -138,6 +148,7 @@ Point parse_coord(char *s);
 void ppoint(Point pt);
 void print_pos(Position *pos, FILE *f, int *owner_map);
 void print_tree_summary(TreeNode *tree, int sims, FILE *f);
+Point try_search_again(TreeNode *tree, int n, int owner_map[], int disp);
 char* slist_str_as_point(Slist l);
 char* str_coord(Point pt, char str[5]);
 //-------------------------- Functions in params.c ----------------------------

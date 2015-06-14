@@ -1,0 +1,4 @@
+param_general verbosity               0
+param_general play_until_the_end      1
+param_general REPORT_PERIOD     2000000
+param_tree    N_SIMS               4000

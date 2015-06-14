@@ -13,10 +13,10 @@ brevity, educational value and strength.  It can beat GNUGo on 13x13 board
 on a modest 4-thread laptop.
 
 To start reading the code, begin either:
-* Bottom up, by looking at the goban implementation - starting with
-  the 'empty_position' definition below and play_move() function.
-* In the middle, by looking at the Monte Carlo playout implementation,
-  starting with the mcplayout() function.
+* Bottom up by looking at the goban implementation (in board.c) - starting with
+  the Position struct (in michi.h), empty_position() and play_move() functions.
+* in the middle of this file by looking at the Monte Carlo playout 
+  implementation, starting with the mcplayout() function.
 * Top down, by looking at the MCTS implementation, starting with the
   tree_search() function. It is just a loop of tree_descend(),
   mcplayout() and tree_update() round and round.
@@ -24,27 +24,13 @@ To start reading the code, begin either:
 It may be better to jump around a bit instead of just reading straight
 from start to end.
 
-The C code can be read in parallel with the python code. 
-I have been careful to keep the notations used by Petr (almost) everywhere.
-Of course the algorithms are the same (at least functionally) as well as the
-parameters. 
-
-Examples where the python and the C codes are different are:
-- in the functions gen_playout_moves_xxx(). I have not been able to emulate in 
-  C the generators that are available in python (yield instruction). So these
-  functions in the C code must compute the whole list of suggestions before 
-  returning.
-- computation of blocks does not use regexp as the direct coding is simple.
-- need to recode a functionality equivalent to python dictionary (in patterns.c)
-
-The source is composed in 7 independent parts
-- Utilities
-- Board routines
-- Go heuristics
-- Monte Carlo Playout policy
-- Monte Carlo Tree search
-- User Interface (Utilities, Various main programs)
-- Pattern code (3x3 and large patterns) which is found in patterns.c
+The source is composed in 6 independent parts
+- Board routines (in board.c)
+- Go heuristics (this file)
+- Monte Carlo Playout policy (this file)
+- Monte Carlo Tree search (this file)
+- User Interface (in ui.c, params.c and debug.c)
+- Pattern code : 3x3 and large patterns (in patterns.c)
 
 In C, functions prototypes must be declared before use. 
 In order to avoid these declarations, functions are defined before they are 
@@ -84,64 +70,17 @@ Short bibliography
     points, blocks, eyes, false eyes, liberties, etc.
     and historical bibliography
 */
-#include <time.h>
 #include "michi.h"
-
-void usage() {
-    fprintf(stderr, "\n\nusage: michi [-z SEED] [command]\n\n"
-                    "where  command = gtp|mcdebug [nsims]|mcbenchmark|tsdebug\n"
-                    "       SEED    = > 0 (fixed seed) or 0 (random seed)\n");
-    exit(-1);
-}
 
 //========================= Definition of Data Structures =====================
 // Given a board of size NxN (N=9, 19, ...), we represent the position
-// as an (N+1)*(N+2)+1 string, with '.' (empty), 'X' (to-play player)
-// 'x' (other player), and whitespace (off-board border to make rules
-// implementation easier).  Coordinates are just indices in this string.
+// as an (N+1)*(N+2)+1 Byte array, with 0 (empty), 2 (white), 3 (black), 
+// and 1 (off-board border to make rules implementation easier).  
+// Coordinates are just indices in this array.
 //
 // -------------------------------- Global Data -------------------------------
-static char* colstr  = "@ABCDEFGHJKLMNOPQRST";
 Mark         *mark1, *mark2, *already_suggested;
-unsigned int idum=1;
 char         buf[BUFLEN];
-Point        allpoints[BOARDSIZE];
-
-//================================== Code =====================================
-// Utilities
-char* slist_str_as_int(Slist l) {
-    buf[0]=0;
-    for (int k=1, n=l[0] ; k<=n ; k++) {
-        char s[32];
-        sprintf(s, " %d", l[k]);
-        strcat(buf, s);
-    }
-    return buf;
-}
-char* slist_str_as_point(Slist l) {
-    buf[0]=0;
-    for (int k=1, n=l[0] ; k<=n ; k++) {
-        char str[8], s[8];
-        sprintf(s, " %s", str_coord(l[k],str));
-        strcat(buf, s);
-    }
-    return buf;
-}
-
-unsigned int true_random_seed(void)
-// return a true random seed (which depends on the time)
-{
-    unsigned int r1, r2, sec, day;
-    time_t tm=time(NULL);
-    struct tm *tcal=localtime(&tm);
-    sec  = tcal->tm_sec + 60*(tcal->tm_min + 60*tcal->tm_hour);
-    // day is a coarse (but sufficient for the current purpose) approximation 
-    day = tcal->tm_mday + 31*(tcal->tm_mon + 12*tcal->tm_year);
-    // Park & Miller random generator (same as qdrandom())
-    r1 =  (1664525*sec) + 1013904223;
-    r2 = (1664525*day) + 1013904223;
-    return (r1^r2);
-}
 
 //================================ Go heuristics ==============================
 // The couple of functions read_ladder_attack / fix_atari is maybe the most 
@@ -486,7 +425,7 @@ void expand(TreeNode *tree)
     tree->children = calloc(slist_size(moves)+1, sizeof(TreeNode*));
     FORALL_IN_SLIST(moves, pt) {
         pos2 = tree->pos;
-        //assert(point_color(&tree->pos, pt) == EMPTY);
+        assert(point_color(&tree->pos, pt) == EMPTY);
         char* ret = play_move(&pos2, pt);
         if (ret[0] != 0) continue;
         // pt is a legal move : we build a new node for it
@@ -602,7 +541,7 @@ double winrate(TreeNode *node)
 }
 
 TreeNode* best_move(TreeNode *tree, TreeNode **except)
-// best move is the most simulated one (avoiing nodes in except list
+// best move is the most simulated one (avoiding nodes in except list)
 {
     int vmax=-1;
     TreeNode *best=NULL;
@@ -709,6 +648,27 @@ void tree_update(TreeNode **nodes,int last,int amaf_map[],double score,int disp)
     }
 }
 
+float nplayouts, nplayouts_per_second=-1.0;
+float start_playouts_sec, stop_playouts_sec;
+int   nplayouts_real;
+static float best2, bestr, bestwr;
+static Point bestmove;
+
+void collect_infos(TreeNode *tree, int n, TreeNode *best, TreeNode *workspace[])
+// Collect infos for the time management
+{
+    TreeNode *second;
+
+    nplayouts_real += n;
+    workspace[0] = best; workspace[1] = 0;
+    second = best_move(tree, workspace);
+    bestwr= winrate(best);
+    best2 = bestwr / winrate(second);
+    bestr = bestwr - winrate(best_move(best, NULL));
+    sprintf(buf, "best2: %.2f bestr: %.3f bestwr: %.3f", best2, bestr, bestwr);
+    log_fmt_s('I',buf,NULL);
+}
+
 Point tree_search(TreeNode *tree, int n, int owner_map[], int disp)
 // Perform MCTS search from a given position for a given #iterations
 {
@@ -728,38 +688,51 @@ Point tree_search(TreeNode *tree, int n, int owner_map[], int disp)
         s = mcplayout(&pos, amaf_map, owner_map, disp);
         tree_update(nodes, last, amaf_map, s, disp);
         // Early stop test
-        double best_wr = winrate(best_move(tree, NULL));
+        best = best_move(tree, NULL);
+        double best_wr = winrate(best);
         if ( (i>n*0.05 && best_wr > FASTPLAY5_THRES)
-              || (i>n*0.2 && best_wr > FASTPLAY20_THRES)) break;
+              || (i>n*0.2 && best_wr > FASTPLAY20_THRES)) {
+            best = best_move(tree, NULL);
+            sprintf(buf,"tree_search() breaks at %d (%.3f)", i, winrate(best));
+            log_fmt_s('I', buf, NULL);
+            nplayouts_real += i;
+            goto finished;
+        }
     }
+
+    best = best_move(tree, NULL);
+    collect_infos(tree, n, best, nodes);
+    
+finished:
     dump_subtree(tree, N_SIMS/50, "", stderr, 1);
     print_tree_summary(tree, i, stderr);
-    best = best_move(tree, NULL);
 
     free(amaf_map);
     if (best->pos.last == PASS_MOVE && best->pos.last2 == PASS_MOVE)
-        return PASS_MOVE;
+        bestmove = PASS_MOVE;
     else if (((double) best->w / (double) best->v) < RESIGN_THRES) 
-        return RESIGN_MOVE;
+        bestmove = RESIGN_MOVE;
     else
-        return best->pos.last;
+        bestmove = best->pos.last;
+    return bestmove;
 }
 
-//============================= user interface(s) =============================
-
-//----------------------------- utility routines ------------------------------
-void make_pretty(Position *pos, char pretty_board[BOARDSIZE], int *capB
-                                                                , int *capW)
+Point try_search_again(TreeNode *tree, int n, int owner_map[], int disp)
+// Check if the situation is clear enough after the first tree search.
+// If not, search for a second period of time
 {
-    for (int k=0 ; k<BOARDSIZE ; k++) {
-        if (point_color(pos, k) == BLACK)      pretty_board[k] = 'X';
-        else if (point_color(pos, k) == WHITE) pretty_board[k] = 'O';
-        else if (point_color(pos, k) == EMPTY) pretty_board[k] = '.';
-        else                                   pretty_board[k] = ' ';
+    if (tree->pos.n >  10 && tree->pos.n < 100) {
+        if (bestwr < 0.4                             // program is behind
+            || best2 < 2.0  || fabs(bestr) > 0.02) { // unclear situation
+            // think harder hoping we will recover
+            log_fmt_s('I', "thinking time extended", NULL);
+            tree_search(tree, n, owner_map, 0);
+        }
     }
-    *capW = pos->caps[0];
-    *capB = pos->caps[1];
+    return bestmove;
 }
+
+//-------------------- routines for printing the tree results -----------------
 
 void dump_subtree(TreeNode *node, double thres, char *indent, FILE *f
                                                                 , int recurse)
@@ -811,326 +784,4 @@ void print_tree_summary(TreeNode *tree, int sims, FILE *f)
     }
     fprintf(f,"[%4d] winrate %.3f | seq %s| can %s\n",sims
                                     ,winrate(best_node[0]), best_seq, can);   
-}
-
-Point parse_coord(char *s)
-{
-    char c, str[10];
-    int  x,y;
-    for (int i=0 ; i<9 ; i++) {
-        if (s[i]==0) {
-            str[i]=0;
-            break;
-        }
-        str[i] = toupper(s[i]);
-    } 
-    if(strcmp(str, "PASS") == 0) return PASS_MOVE;
-    sscanf(s, "%c%d", &c, &y);
-    c = toupper(c);
-    if (c<'J') x = c-'@';
-    else       x = c-'@'-1;
-    return (N-y+1)*(N+1) + x;
-}
-
-char* str_coord(Point pt, char str[8])
-{
-    if (pt == PASS_MOVE) strcpy(str, "pass");
-    else if (pt == RESIGN_MOVE) strcpy(str, "resign");
-    else {
-        int row = pt/(N+1); int col = (pt%(N+1));
-        sprintf(str, "%c%d", '@'+col,N+1-row);
-        if (str[0] > 'H') str[0]++;
-    }
-    return str;
-}
-
-void ppoint(Point pt) {
-    char str[8];
-    str_coord(pt,str);
-    fprintf(stderr,"%s\n",str);
-}
-
-void print_pos(Position *pos, FILE *f, int *owner_map)
-// Print visualization of the given board position
-{
-    char pretty_board[BOARDSIZE], strko[8];
-    int  capB, capW;
-
-    make_pretty(pos, pretty_board, &capB, &capW);
-    fprintf(f,"Move: %-3d   Black: %d caps   White: %d caps   Komi: %.1f",
-            pos->n, capB, capW, pos->komi); 
-    if (pos->ko)
-        fprintf(f,"   ko: %s", str_coord(pos->ko,strko)); 
-    fprintf(f,"\n");
-
-    for (int row=1, k=N+1, k1=N+1 ; row<=N ; row++) {
-        if (pos->last == k+1) fprintf(f, " %-2d(", N-row+1); 
-        else                  fprintf(f, " %-2d ", N-row+1);
-        k++;k1++;
-        for (int col=1 ; col<=N ; col++,k++) {
-            fprintf(f, "%c", pretty_board[k]);
-            if (pos->last == k+1)    fprintf(f, "(");
-            else if (pos->last == k) fprintf(f, ")");
-            else                     fprintf(f, " ");
-        }
-        if (owner_map) {
-            fprintf(f, "   ");
-            for (int col=1 ; col<=N ; col++,k1++) {
-                char c;
-                if      ((double)owner_map[k1] > 0.6*N_SIMS) c = 'X';
-                else if ((double)owner_map[k1] > 0.3*N_SIMS) c = 'x';
-                else if ((double)owner_map[k1] <-0.6*N_SIMS) c = 'O';
-                else if ((double)owner_map[k1] <-0.3*N_SIMS) c = 'o';
-                else                                         c = '.';
-                fprintf(f, " %c", c);
-            }
-        }
-        fprintf(f, "\n");
-    }
-    fprintf(f, "    ");
-    for (int col=1 ; col<=N ; col++) fprintf(f, "%c ", colstr[col]);
-    fprintf(f, "\n\n");
-}
-
-//----------------------------- Various main programs -------------------------
-double mcbenchmark(int n, Position *pos, int amaf_map[], int owner_map[])
-// run n Monte-Carlo playouts from empty position, return avg. score
-{
-    double sumscore = 0.0;
-    idum = 1;
-    for (int i=0 ; i<n ; i++) {
-        if (i%10 == 0) {
-            if (i%50 == 0) fprintf(stderr, "\n%5d", i);
-            fprintf(stderr, " ");
-        }
-        fprintf(stderr, ".");
-        empty_position(pos); memset(amaf_map, 0, BOARDSIZE*sizeof(int)); 
-        sumscore += mcplayout(pos, amaf_map, owner_map, 0); 
-    }
-    fprintf(stderr, "\n");
-    return sumscore/n;
-}
-
-void begin_game(void) {
-    c1++; c2=1;
-    sprintf(buf,"BEGIN GAME %d, random seed = %u",c1,idum);
-    log_fmt_s('I', buf, NULL);
-}
-
-char* gogui_analyse_commands(void)
-{
-    return "param/Params General/param_general\n"
-           "param/Params Tree Policy/param_tree\n" 
-           "param/Params Playouts/param_playout\n";
-}
-
-void gtp_io(void)
-{
-    char line[BUFLEN], *cmdid, *command, msg[BUFLEN], *ret;
-    char *known_commands="\ncputime\ndebug subcmd\ngenmove\n"
-        "gogui-analyze_commands\nhelp\nknown_command\nkomi\nlist_commands\n"
-        "name\nparam_general\nparam_playout\nparam_tree\nplay\n"
-        "protocol_version\nquit\nversion\n"
-        ;
-    int      game_ongoing=1, i;
-    int      *owner_map=calloc(BOARDSIZE, sizeof(int));
-    TreeNode *tree;
-    Position *pos, pos2;
-    
-    pos = &pos2;
-    empty_position(pos);
-    tree = new_tree_node(pos);
-
-    for(;;) {
-        ret = "";
-        if (fgets(line, BUFLEN, stdin) == NULL) break;
-        line[strlen(line)-1] = 0;
-        log_fmt_s('C', line, NULL);
-        command = strtok(line, " \t\n");
-        if (command == NULL) continue;          // ignore newline
-        if (command[0] == '#') continue;        // ignore comment line
-        if (sscanf(command, "%d", &i) == 1) {
-            cmdid = command;
-            command = strtok(NULL, " \t\n");
-        }
-        else
-            cmdid = "";
-
-        if (strcmp(command, "play")==0) {
-            c2++; game_ongoing = 1;
-            ret = strtok(NULL, " \t\n");            // color is ignored
-            char *str = strtok(NULL, " \t\n");
-            if(str == NULL) goto finish_command;
-            Point pt = parse_coord(str);
-            if (point_color(pos,pt) == EMPTY)
-                ret = play_move(pos, pt);           // suppose alternate play
-            else {
-                if(pt == PASS_MOVE) ret = pass_move(pos);
-                else ret ="Error Illegal move: point not EMPTY\n";
-            }
-        }
-        else if (strcmp(command, "genmove") == 0) {
-            c2++; game_ongoing = 1;
-            Point pt;
-            if (pos->last == PASS_MOVE && pos->n>2) {
-                log_fmt_s('I', "Opponent pass. I pass", NULL);
-                pt = PASS_MOVE;
-            }
-            else {
-                free_tree(tree);
-                tree = new_tree_node(pos);
-                pt = tree_search(tree, N_SIMS, owner_map, 0);
-            }
-            if (pt == PASS_MOVE)
-                pass_move(pos);
-            else if (pt != RESIGN_MOVE)
-                play_move(pos, pt);
-            ret = str_coord(pt, buf);  
-        }
-        else if (strcmp(command, "cputime") == 0) {
-            float time_sec = (float) clock() / (float) CLOCKS_PER_SEC;
-            sprintf(buf, "%.3f", time_sec);
-            ret = buf;
-        }
-        else if (strcmp(command, "clear_board") == 0) {
-            if (game_ongoing) begin_game();
-            game_ongoing = 0;
-            free_tree(tree);
-            ret = empty_position(pos);
-            tree = new_tree_node(pos);
-        }
-        else if (strcmp(command, "boardsize") == 0) {
-            char *str = strtok(NULL, " \t\n");
-            if(str == NULL) goto finish_command;
-            int size = atoi(str);
-            if (size != N) {
-                sprintf(buf, "Error: Trying to set incompatible boardsize %s"
-                             " (!= %d)", str, N);
-                log_fmt_s('E', buf, NULL);
-                ret = buf;
-            }
-            else
-                ret = "";
-        }
-        else if (strcmp(command,"komi") == 0) {
-            char *str = strtok(NULL, " \t\n");
-            if(str == NULL) {
-                ret = "Error - a komi value is expected";
-                goto finish_command;
-            }
-            if(sscanf(str, "%f", &pos->komi) == 1)
-                ret = "";
-            else
-                ret = "Error - invalid value";
-        }
-        else if (strcmp(command,"debug") == 0)
-            ret = debug(pos);
-        else if (strcmp(command,"gogui-analyze_commands") == 0)
-            ret = gogui_analyse_commands();
-        else if (strcmp(command,"param_general") == 0)
-            ret = param_general();
-        else if (strcmp(command,"param_playout") == 0)
-            ret = param_playout();
-        else if (strcmp(command,"param_tree") == 0)
-            ret = param_tree();
-        else if (strcmp(command,"name") == 0)
-            ret = "michi-c";
-        else if (strcmp(command,"version") == 0)
-            ret = "simple go program demo";
-        else if (strcmp(command,"protocol_version") == 0)
-            ret = "2";
-        else if (strcmp(command,"list_commands") == 0)
-            ret = known_commands;
-        else if (strcmp(command,"help") == 0)
-            ret = known_commands;
-        else if (strcmp(command,"known_command") == 0) {
-            char *command = strtok(NULL, " \t\n");
-            if (strstr(known_commands,command) != NULL)
-                ret = "true";
-            else
-                ret = "false";
-        }
-        else if (strcmp(command,"quit") == 0) {
-            printf("=%s \n\n", cmdid);
-            log_hashtable_synthesis();
-            break;
-        }
-        else {
-            sprintf(msg, "Warning: Ignoring unknown command - %s\n", command);
-            ret = msg;
-        }
-        print_pos(pos, stderr, owner_map);
-finish_command:
-        if ((ret[0]=='E' && ret[1]=='r')
-                        || ret[0]=='W') printf("\n?%s %s\n\n", cmdid, ret);
-        else                            printf("\n=%s %s\n\n", cmdid, ret);
-        fflush(stdout);
-    }
-}
-
-int michi_console(int argc, char *argv[]) 
-{
-    char *command;
-    // Init global data
-    flog = fopen("michi.log", "w");
-    setbuf(flog, NULL);                // guarantees that log is unbuffered
-    log_fmt_i('I',"Size of struct Position = %d bytes", sizeof(Position));
-    make_pat3set();
-    init_large_patterns("patterns.prob", "patterns.spat");
-    already_suggested = calloc(1, sizeof(Mark));
-    mark1 = calloc(1, sizeof(Mark)); mark2 = calloc(1, sizeof(Mark));
-    Position *pos = malloc(sizeof(Position));
-    int      *amaf_map=calloc(BOARDSIZE, sizeof(int)); 
-    int      *owner_map=calloc(BOARDSIZE, sizeof(int));
-    empty_position(pos);
-    TreeNode *tree = new_tree_node(pos);
-    expand(tree);
-    slist_clear(allpoints);
-    FORALL_POINTS(pos,pt)
-        if (point_color(pos,pt) == EMPTY) slist_push(allpoints,pt);
-
-    // check if the user gave a seed for the random generator
-    if (argc == 3) {  // "michi -z command" or "michi mcdebug nsims"
-        if (sscanf(argv[1], "-z%u", &idum)>0) {
-            if (idum == 0)
-                idum = true_random_seed();
-            command = argv[2];
-        }
-        else
-            command = argv[1];
-    }
-    else
-        command = argv[1];
-
-    if (argc < 2)    // default action
-        usage();
-    else if (strcmp(command,"gtp") == 0)
-        gtp_io();
-    else if (strcmp(command,"mcdebug") == 0) {
-        idum = 1;
-        int nsims = 1;
-        if (argc ==3) nsims = atoi(argv[2]);
-        for (int i=0 ; i<nsims ; i++) {
-            c1 = i;
-            fprintf(stderr, "%lf\n", mcplayout(pos, amaf_map, owner_map, 1)); 
-            fprintf(stderr,"mcplayout %d\n", i);
-            empty_position(pos);
-        }
-    }
-    else if (strcmp(command,"mcbenchmark") == 0)
-        printf("%lf\n", mcbenchmark(2000, pos, amaf_map, owner_map)); 
-    else if (strcmp(command,"tsdebug") == 0) {
-        Point move=tree_search(tree, 100, amaf_map, 0);
-        fprintf(stderr, "move = %s\n", str_coord(move,buf));
-        if (move != PASS_MOVE && move != RESIGN_MOVE)
-            play_move(&tree->pos,move);
-        print_pos(&tree->pos, stderr, NULL); 
-    }
-    else
-        usage();
-    free_tree(tree); free(pos);
-    free(amaf_map); free(owner_map);
-    free(already_suggested); free(mark1); free(mark2);
-    fclose(flog);
-    return 0;
 }

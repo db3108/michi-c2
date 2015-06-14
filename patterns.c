@@ -691,7 +691,7 @@ void init_large_patterns(const char *prob, const char *spat)
         load_spat_file(fspat);
         fclose(fspat);
     }
-    if (fprob == NULL || fspat == NULL) {
+    if (verbosity > 0 && (fprob == NULL || fspat == NULL)) {
         fprintf(stderr, "Warning: michi cannot load pattern files, "
                 "It will be much weaker. "
                 "Consider lowering EXPAND_VISITS %d->2\n", EXPAND_VISITS);

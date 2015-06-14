@@ -1,0 +1,2 @@
+#!/bin/bash
+/path/to/cgosGtp/cgosGtp-linux-x86_64 -c michi.cfg -k kill.txt >& cgos.log

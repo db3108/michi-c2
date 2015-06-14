@@ -13,11 +13,14 @@ The foreseen evolutions are :
   * parallelization,
 - add some functionalities that will increase the usability of the program, eg. 
   * variable boardsize, 
-  * time management,
+  * time management (only sudden death is implemented up to now),
   * "intelligent" early passing 
 
 There is still room for improvements in term of speed but I focus first on the
 other modifications.
+
+The current version is able to play on CGOS. A README file and example 
+configuration files can be found in the new cgos directory.
 
 Michi-c2 is distributed under the MIT licence.  Now go forth, hack and peruse!
 
