@@ -163,6 +163,8 @@ void   init_large_patterns(const char *prob, const char *spat);
 void   copy_to_large_board(Position *pos);
 void   log_hashtable_synthesis();
 double large_pattern_probability(Point pt);
+//---------------------------- Functions in ui.c ------------------------------
+void* michi_calloc(size_t nmemb, size_t size);
 //-------------------- Functions inlined for performance ----------------------
 #ifndef _MSC_VER
     #define __INLINE__ static inline

@@ -673,8 +673,8 @@ void init_large_patterns(const char *prob, const char *spat)
     init_large_board();
 
     // Load patterns data from files
-    patterns = calloc(LENGTH, sizeof(LargePat));
-    probs = calloc(1064481, sizeof(float));
+    patterns = michi_calloc(LENGTH, sizeof(LargePat));
+    probs = michi_calloc(1064481, sizeof(float));
     log_fmt_s('I', "Loading pattern probs ...", NULL);
     fprob = fopen(prob, "r");
     if (fprob == NULL)

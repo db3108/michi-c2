@@ -33,6 +33,28 @@ void begin_game(void) {
 }
 
 //----------------------------- utility routines ------------------------------
+void* michi_malloc(size_t size)
+// Michi memory allocator - fatal error if allocation failed
+{
+    void* t = malloc(size);
+    if (t == NULL) {
+        log_fmt_i('E',"Memory allocation failed (size = %d bytes)", size);
+        exit(-1);
+    }
+    return t;
+}
+
+void* michi_calloc(size_t nmemb, size_t size)
+// Michi memory allocator - fatal error if allocation failed
+{
+    void* t = calloc(nmemb, size);
+    if (t == NULL) {
+        log_fmt_i('E',"Memory allocation failed (size = %d bytes)", size*nmemb);
+        exit(-1);
+    }
+    return t;
+}
+
 Point parse_coord(char *s)
 {
     char c, str[10];
@@ -382,7 +404,7 @@ void gtp_io(FILE *f, FILE *out)
         "gogui-analyze_commands\nhelp\nknown_command\nkomi\nlist_commands\n"
         "name\nparam_general\nparam_playout\nparam_tree\nplay\n"
         "protocol_version\nquit\ntime_left\ntime_settings\nversion";
-    int      *owner_map=calloc(BOARDSIZE, sizeof(int));
+    int      *owner_map=michi_calloc(BOARDSIZE, sizeof(int));
     TreeNode *tree;
     Position *pos, pos2;
     
@@ -485,11 +507,12 @@ int michi_console(int argc, char *argv[])
     }
     init_large_patterns("patterns.prob", "patterns.spat");
 
-    already_suggested = calloc(1, sizeof(Mark));
-    mark1 = calloc(1, sizeof(Mark)); mark2 = calloc(1, sizeof(Mark));
-    Position *pos = malloc(sizeof(Position));
-    int      *amaf_map=calloc(BOARDSIZE, sizeof(int)); 
-    int      *owner_map=calloc(BOARDSIZE, sizeof(int));
+    already_suggested = michi_calloc(1, sizeof(Mark));
+    mark1 = michi_calloc(1, sizeof(Mark));
+    mark2 = michi_calloc(1, sizeof(Mark));
+    Position *pos = michi_malloc(sizeof(Position));
+    int      *amaf_map=michi_calloc(BOARDSIZE, sizeof(int)); 
+    int      *owner_map=michi_calloc(BOARDSIZE, sizeof(int));
     empty_position(pos);
     TreeNode *tree = new_tree_node(pos);
     expand(tree);

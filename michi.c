@@ -401,7 +401,7 @@ found:
 //========================== Montecarlo tree search ===========================
 TreeNode* new_tree_node(Position *pos)
 {
-    TreeNode *node = calloc(1,sizeof(TreeNode));
+    TreeNode *node = michi_calloc(1,sizeof(TreeNode));
     node->pos = *pos;
     node->pv = PRIOR_EVEN; node->pw = PRIOR_EVEN/2;
     return node;
@@ -422,7 +422,7 @@ void expand(TreeNode *tree)
     // Use light random playout generator to get all the empty points (not eye)
     gen_playout_moves_random(&tree->pos, moves, BOARD_IMIN-1);
 
-    tree->children = calloc(slist_size(moves)+1, sizeof(TreeNode*));
+    tree->children = michi_calloc(slist_size(moves)+1, sizeof(TreeNode*));
     FORALL_IN_SLIST(moves, pt) {
         pos2 = tree->pos;
         assert(point_color(&tree->pos, pt) == EMPTY);
@@ -673,7 +673,7 @@ Point tree_search(TreeNode *tree, int n, int owner_map[], int disp)
 // Perform MCTS search from a given position for a given #iterations
 {
     double s;
-    int *amaf_map=calloc(BOARDSIZE, sizeof(int)), i, last; 
+    int *amaf_map=michi_calloc(BOARDSIZE, sizeof(int)), i, last; 
     TreeNode *best, *nodes[500];
 
     // Initialize the root node if necessary
