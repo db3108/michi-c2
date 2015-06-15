@@ -501,9 +501,14 @@ int michi_console(int argc, char *argv[])
     command = argv[1];
     if (argc == 3) {
         FILE *f=fopen(argv[2],"r");
-        if (f != NULL)
+        if (f != NULL) {
             gtp_io(f,flog);             // read gtp commands (setup parameters)
-        fclose(f);
+            fclose(f);
+        }
+        else {
+            log_fmt_s('E',"cannot open config file -> %s",argv[2]);
+            exit(-1);
+        }
     }
     init_large_patterns("patterns.prob", "patterns.spat");
 
