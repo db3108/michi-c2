@@ -18,15 +18,15 @@ CFLAGS= -DNDEBUG -O3 -march=native -msse4 -fshort-enums -Wall -Wno-char-subscrip
 # Compilation options for profiling with gprof
 #CFLAGS=-pg -O3 -DNDEBUG -march=native -msse4 -fshort-enums -Wall -Wno-char-subscripts
 
-OBJS=ui.o params.o board.o patterns.o debug.o main.o
+OBJS=ui.o sgf.o control.o michi.o params.o board.o board_util.o patterns.o debug.o main.o
 BIN=michi
 
 all: $(BIN) 
 
-michi: $(OBJS) michi.o michi.h
-	gcc $(CFLAGS) -std=gnu99 -o michi michi.o $(OBJS) -lm
+michi: $(OBJS) michi.h board.h
+	gcc $(CFLAGS) -std=gnu99 -o michi $(OBJS) -lm
 
-%.o: %.c michi.h
+%.o: %.c michi.h board.h
 	gcc $(GENCODE) $(CFLAGS) -c -std=gnu99 $< 
 
 test:

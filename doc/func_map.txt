@@ -1,0 +1,202 @@
+michi_console (ui.c)
+    make_pat3set
+    init_large_patterns
+    empty_position
+    gtp_io
+    mcplayout
+    mcbenchmark
+    tree_search
+    play_move
+    make_params_default
+        param_general
+        param_tree
+        param_playout
+
+gtp_io (ui.c)
+    gtp_play
+        play_move
+        pass_move
+    gtp_genmove
+        genmove
+        do_play
+    gtp_time_left
+    gtp_cputime
+    gtp_undo
+        undo_move
+    gtp_best_moves
+        compute_best_moves
+    gtp_boardsize
+    gtp_clear_board
+        empty_position
+        free_tree
+        new_tree_node
+    gtp_final_score
+        compute_all_status
+            tree_search
+            mcts_point_status
+        final_score
+    gtp_final_status_list
+        compute_all_status
+        final_status_list
+    gtp_gg_undo
+    debug
+        print_pos
+        mcplayout
+        blocks_OK
+        block_compute_libs
+        make_list_last_moves_neighbors
+        gen_playout_moves_capture
+        gen_playout_moves_pat3
+        copy_to_large_board
+        make_list_pat_matching
+        fix_atari
+        slist_str_as_point
+        print_marker
+    gogui_analyse_commands
+    gogui_play_sequence
+    gogui_setup
+        read_next_color_point_pair
+    gogui_setup_player
+    gtp_komi
+    gtp_loadsgf
+        loadsgf 
+    gtp_sg_compare_float
+    gtp_owner_map
+    param_general
+    param_playout
+    param_tree
+    gtp_score_histogram
+    gtp_set_free_handicap
+    gtp_time_left
+    gtp_time_settings
+    gtp_visit_count
+
+genmove (control.c)
+    is_better_to_pass
+    free_tree
+    new_tree_node
+    nsims
+    update_dyn_komi
+    tree_search
+    is_time_limited
+    is_position_clear_enough
+
+
+loadsgf (sgf.c)
+    game_clear_board
+    yylex
+    Collection
+        GameTree
+            Sequence
+                Node
+                    Properties
+                        Property
+                            PropIdent
+                            PropValue
+                                do_play
+                                board_place_stone
+                                board_set_size
+                                game_clear_board
+                                board_set_color_to_play
+                            PropValues
+                                PropValue
+                                PropValues
+                        Properties
+                RestOfSequence
+                    Node
+                    RestOfSequence 
+            RestOfCollection
+        RestOfCollection
+            GameTree
+            RestOfCollection
+
+init_large_patterns (patterns.c)
+    init_zobrist_hashdata
+    init_stone_color
+    init_gridcular
+    init_large_board
+    load_prob_file
+    load_spat_file
+        gridcular_enumerate
+            gridcular_enumerate1
+                gridcular_enumerate2
+                    gridcular_register
+                        init_gridcular
+                        gridcular_index
+                
+        permute
+        zobrist_hash
+        build_pat
+        insert_pat
+            find_pat
+
+
+mcbenchmark (ui.c)
+    empty_position mcplayout
+
+
+mcplayout (michi.c)
+    make_list_last_moves_neighbors
+    choose_capture_move
+        fix_atari
+            block_compute_libs
+            line_height
+            read_ladder_attack
+                play_move
+                fix_atari_r
+                    block_compute_libs
+                    make_list_neighbor_blocks_in_atari
+                    play_move
+                    read_ladder_attack
+            make_list_neighbor_blocks_in_atari
+            play_move
+            undo_move
+        slist_shuffle 
+        choose_from
+    gen_playout_moves_pat3
+        pat3_match slist_push
+    choose_from
+        is_eye play_move random_int fix_atari undo_move
+    choose_random_move
+        is_eye play_move random_int undo_move
+    score
+
+
+make_pat3set (patterns.c)
+    pat_enumerate
+        rot90
+        pat_enumerate1
+            vertflip
+            pat_enumerate2
+                horizflip
+                pat_enumerate3
+                    swapcolor
+                    pat_wildexp
+                        compute_code
+
+
+play_move (board.c)
+    update_blocks
+        block_remove_lib
+            block_capture
+                remove_stone block_add_lib block_clear_libs
+        select_empty
+        select_black
+        select_white
+        put_stone
+        point_create_block 
+            new_blkid
+        block_merge
+        block_count_libs
+        block_remove_lib_extend
+        block_add_lib
+
+    
+tree_search (michi.c)
+    tree_descend
+        most_urgent
+    mcplayout
+    tree_update
+    best_move
+    winrate
+    collect_infos

@@ -1,0 +1,882 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
+<title>User Manual for michi-c</title>
+<style type="text/css">
+
+/*
+:Author: David Goodger (goodger@python.org)
+:Id: $Id: html4css1.css 7614 2013-02-21 15:55:51Z milde $
+:Copyright: This stylesheet has been placed in the public domain.
+
+Default cascading style sheet for the HTML output of Docutils.
+
+See http://docutils.sf.net/docs/howto/html-stylesheets.html for how to
+customize this style sheet.
+*/
+
+/* used to remove borders from tables and images */
+.borderless, table.borderless td, table.borderless th {
+  border: 0 }
+
+table.borderless td, table.borderless th {
+  /* Override padding for "table.docutils td" with "! important".
+     The right padding separates the table cells. */
+  padding: 0 0.5em 0 0 ! important }
+
+.first {
+  /* Override more specific margin styles with "! important". */
+  margin-top: 0 ! important }
+
+.last, .with-subtitle {
+  margin-bottom: 0 ! important }
+
+.hidden {
+  display: none }
+
+a.toc-backref {
+  text-decoration: none ;
+  color: black }
+
+blockquote.epigraph {
+  margin: 2em 5em ; }
+
+dl.docutils dd {
+  margin-bottom: 0.5em }
+
+object[type="image/svg+xml"], object[type="application/x-shockwave-flash"] {
+  overflow: hidden;
+}
+
+/* Uncomment (and remove this text!) to get bold-faced definition list terms
+dl.docutils dt {
+  font-weight: bold }
+*/
+
+div.abstract {
+  margin: 2em 5em }
+
+div.abstract p.topic-title {
+  font-weight: bold ;
+  text-align: center }
+
+div.admonition, div.attention, div.caution, div.danger, div.error,
+div.hint, div.important, div.note, div.tip, div.warning {
+  margin: 2em ;
+  border: medium outset ;
+  padding: 1em }
+
+div.admonition p.admonition-title, div.hint p.admonition-title,
+div.important p.admonition-title, div.note p.admonition-title,
+div.tip p.admonition-title {
+  font-weight: bold ;
+  font-family: sans-serif }
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title, .code .error {
+  color: red ;
+  font-weight: bold ;
+  font-family: sans-serif }
+
+/* Uncomment (and remove this text!) to get reduced vertical space in
+   compound paragraphs.
+div.compound .compound-first, div.compound .compound-middle {
+  margin-bottom: 0.5em }
+
+div.compound .compound-last, div.compound .compound-middle {
+  margin-top: 0.5em }
+*/
+
+div.dedication {
+  margin: 2em 5em ;
+  text-align: center ;
+  font-style: italic }
+
+div.dedication p.topic-title {
+  font-weight: bold ;
+  font-style: normal }
+
+div.figure {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+div.footer, div.header {
+  clear: both;
+  font-size: smaller }
+
+div.line-block {
+  display: block ;
+  margin-top: 1em ;
+  margin-bottom: 1em }
+
+div.line-block div.line-block {
+  margin-top: 0 ;
+  margin-bottom: 0 ;
+  margin-left: 1.5em }
+
+div.sidebar {
+  margin: 0 0 0.5em 1em ;
+  border: medium outset ;
+  padding: 1em ;
+  background-color: #ffffee ;
+  width: 40% ;
+  float: right ;
+  clear: right }
+
+div.sidebar p.rubric {
+  font-family: sans-serif ;
+  font-size: medium }
+
+div.system-messages {
+  margin: 5em }
+
+div.system-messages h1 {
+  color: red }
+
+div.system-message {
+  border: medium outset ;
+  padding: 1em }
+
+div.system-message p.system-message-title {
+  color: red ;
+  font-weight: bold }
+
+div.topic {
+  margin: 2em }
+
+h1.section-subtitle, h2.section-subtitle, h3.section-subtitle,
+h4.section-subtitle, h5.section-subtitle, h6.section-subtitle {
+  margin-top: 0.4em }
+
+h1.title {
+  text-align: center }
+
+h2.subtitle {
+  text-align: center }
+
+hr.docutils {
+  width: 75% }
+
+img.align-left, .figure.align-left, object.align-left {
+  clear: left ;
+  float: left ;
+  margin-right: 1em }
+
+img.align-right, .figure.align-right, object.align-right {
+  clear: right ;
+  float: right ;
+  margin-left: 1em }
+
+img.align-center, .figure.align-center, object.align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.align-left {
+  text-align: left }
+
+.align-center {
+  clear: both ;
+  text-align: center }
+
+.align-right {
+  text-align: right }
+
+/* reset inner alignment in figures */
+div.align-right {
+  text-align: inherit }
+
+/* div.align-center * { */
+/*   text-align: left } */
+
+ol.simple, ul.simple {
+  margin-bottom: 1em }
+
+ol.arabic {
+  list-style: decimal }
+
+ol.loweralpha {
+  list-style: lower-alpha }
+
+ol.upperalpha {
+  list-style: upper-alpha }
+
+ol.lowerroman {
+  list-style: lower-roman }
+
+ol.upperroman {
+  list-style: upper-roman }
+
+p.attribution {
+  text-align: right ;
+  margin-left: 50% }
+
+p.caption {
+  font-style: italic }
+
+p.credits {
+  font-style: italic ;
+  font-size: smaller }
+
+p.label {
+  white-space: nowrap }
+
+p.rubric {
+  font-weight: bold ;
+  font-size: larger ;
+  color: maroon ;
+  text-align: center }
+
+p.sidebar-title {
+  font-family: sans-serif ;
+  font-weight: bold ;
+  font-size: larger }
+
+p.sidebar-subtitle {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+p.topic-title {
+  font-weight: bold }
+
+pre.address {
+  margin-bottom: 0 ;
+  margin-top: 0 ;
+  font: inherit }
+
+pre.literal-block, pre.doctest-block, pre.math, pre.code {
+  margin-left: 2em ;
+  margin-right: 2em }
+
+pre.code .ln { color: grey; } /* line numbers */
+pre.code, code { background-color: #eeeeee }
+pre.code .comment, code .comment { color: #5C6576 }
+pre.code .keyword, code .keyword { color: #3B0D06; font-weight: bold }
+pre.code .literal.string, code .literal.string { color: #0C5404 }
+pre.code .name.builtin, code .name.builtin { color: #352B84 }
+pre.code .deleted, code .deleted { background-color: #DEB0A1}
+pre.code .inserted, code .inserted { background-color: #A3D289}
+
+span.classifier {
+  font-family: sans-serif ;
+  font-style: oblique }
+
+span.classifier-delimiter {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+span.interpreted {
+  font-family: sans-serif }
+
+span.option {
+  white-space: nowrap }
+
+span.pre {
+  white-space: pre }
+
+span.problematic {
+  color: red }
+
+span.section-subtitle {
+  /* font-size relative to parent (h1..h6 element) */
+  font-size: 80% }
+
+table.citation {
+  border-left: solid 1px gray;
+  margin-left: 1px }
+
+table.docinfo {
+  margin: 2em 4em }
+
+table.docutils {
+  margin-top: 0.5em ;
+  margin-bottom: 0.5em }
+
+table.footnote {
+  border-left: solid 1px black;
+  margin-left: 1px }
+
+table.docutils td, table.docutils th,
+table.docinfo td, table.docinfo th {
+  padding-left: 0.5em ;
+  padding-right: 0.5em ;
+  vertical-align: top }
+
+table.docutils th.field-name, table.docinfo th.docinfo-name {
+  font-weight: bold ;
+  text-align: left ;
+  white-space: nowrap ;
+  padding-left: 0 }
+
+/* "booktabs" style (no vertical lines) */
+table.docutils.booktabs {
+  border: 0px;
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-collapse: collapse;
+}
+table.docutils.booktabs * {
+  border: 0px;
+}
+table.docutils.booktabs th {
+  border-bottom: thin solid;
+  text-align: left;
+}
+
+h1 tt.docutils, h2 tt.docutils, h3 tt.docutils,
+h4 tt.docutils, h5 tt.docutils, h6 tt.docutils {
+  font-size: 100% }
+
+ul.auto-toc {
+  list-style-type: none }
+
+</style>
+</head>
+<body>
+<div class="document" id="user-manual-for-michi-c">
+<h1 class="title">User Manual for michi-c</h1>
+
+<p>Denis Blumstein</p>
+<p>Revision : 1.4</p>
+<div class="section" id="introduction">
+<h1>1. Introduction</h1>
+<p>Michi-c is a <em>Go gtp engine</em>. This means that</p>
+<ul class="simple">
+<li>it is a program that plays Go, the ancient asian game.</li>
+<li>it takes its inputs and provides its outputs in text mode using the
+so-called <em>Go Text Protocol</em> (gtp) [1].</li>
+</ul>
+<p>Put simply, this means that the program reads commands like</p>
+<dl class="docutils">
+<dt><em>play black C3</em></dt>
+<dd>which tells him to put a black stone on intersection C3</dd>
+<dt><em>genmove white</em></dt>
+<dd>which tells him to answer its move in the current position</dd>
+</dl>
+<p>It is perfectly possible to play games with michi-c that way.
+But it becomes fastidious very soon.</p>
+<p>Luckily Markus Enzenberger has built a wonderful program named <em>gogui</em> [2]
+that allows us to play interactively with michi using the mouse and a graphical
+display of a board (and much more as we will see in the next section).</p>
+<p>So this manual is for you if you need information</p>
+<ul class="simple">
+<li>on how to use michi-c with gogui (section 2)</li>
+<li>on the behaviour of the gtp commands that are specific to michi-c (section 3)</li>
+<li>the command line arguments (section 4)</li>
+</ul>
+<p><strong>References</strong></p>
+<p>[1] Gtp Go Text Protocol : <a class="reference external" href="http://www.lysator.liu.se/~gunnar/gtp/">http://www.lysator.liu.se/~gunnar/gtp/</a></p>
+<p>[2]&nbsp;Gogui : <a class="reference external" href="http://gogui.sourceforge.net/">http://gogui.sourceforge.net/</a></p>
+<p>[3] Smart Game Format : <a class="reference external" href="http://www.red-bean.com/sgf">http://www.red-bean.com/sgf</a></p>
+</div>
+<div class="section" id="playing-with-michi-c-through-gogui">
+<h1>2. Playing with michi-c through gogui</h1>
+<p><strong>Prerequisite</strong> we suppose that gogui has been installed on your system and
+is working well (tested by playing manually a few moves for example)</p>
+<div class="section" id="making-gogui-aware-of-michi-c">
+<h2>2.1 Making gogui aware of michi-c</h2>
+<p>The first thing is to add michi-c to the list of programs known by gogui.
+This is done by selecting &quot;New Program&quot; in the &quot;Program&quot; menu
+as shown in figure 1 below (See the gogui documentation chapter 4.)</p>
+<p>Then a windows pops up with two text fields to fill (fig.2).
+In the <em>command</em> field enter</p>
+<blockquote>
+/absolute/path/to/michi gtp</blockquote>
+<p>This will run michi-c with the default parameters. In section 4 you will see
+how these parameters can be changed at initialization time.</p>
+<p>I recommend that you enter the absolute path where the michi executable is.</p>
+<p>In the <em>working directory</em> field enter any existing directory you like.
+This is where the michi log file will go.</p>
+<p>If you get a new window as shown in fig. 3 when you click OK, then
+it seems that you are done.</p>
+<div class="figure align-center">
+<img alt="img/img1.png" src="img/img1.png" style="width: 558.75px; height: 407.25px;" />
+<p class="caption">fig1. Definition of an New Program</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<div class="figure align-center">
+<img alt="img/img2.png" src="img/img2.png" style="width: 444.75px; height: 227.25px;" />
+<p class="caption">fig2. Define the command to run michi</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<div class="figure align-center">
+<img alt="img/img3.png" src="img/img3.png" style="width: 422.25px; height: 243.75px;" />
+<p class="caption">fig3. The new program gogui will add in its list</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p>What happens is that gogui has began to talk to michi.
+It has asked for its name and its version.
+The fact that the window has appeared shows that michi has answered correctly.
+Before you validate the introduction of michi-c in the list of programs known
+by gogui (by clicking OK), you have the opportunity to change the label
+which, by default is the name of the program. This can be useful to have many
+versions of the same program but with different parameter settings.
+(it is always possible to change it afterwards, using the &quot;Edit Program&quot; entry
+in the Program menu).</p>
+<p>michi-c is now usable in gogui and you can begin to play with it.
+You play just by clicking on the intersection you want to play and as soon as
+you have played the program begins to &quot;think&quot; and will reply after a few
+seconds (the computer color has been set to white at initialization and can
+be changed in the menu <em>Game</em>, see fig.4).</p>
+<div class="figure align-center">
+<img alt="img/img5.png" src="img/img5.png" style="width: 558.75px; height: 407.25px;" />
+<p class="caption">fig4. How to change the computer color</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p><strong>Troubleshooting</strong> If you have not been as lucky as described in the above
+paragraphs, the best advice I could give is to verify that the <em>command</em> field
+is correct. On Linux or MacOS X the easy way is to try to execute this command
+in a terminal.</p>
+<p>Then type <strong>name</strong> and the program should answer:</p>
+<pre class="literal-block">
+= michi-c
+</pre>
+<p>and wait for another command. You can then try <strong>help</strong> to obtain a list of all
+available commands. <strong>quit</strong> will leave michi.</p>
+<p>Normally, if you had trouble in running michi in gogui, something wrong should
+happen in the previous sequence. This should give you enough feedback,
+either from the shell (if you made an error in the path) or from michi, for you
+to undersand what the problem is and to correct it.</p>
+</div>
+<div class="section" id="what-michi-think-of-the-position">
+<h2>2.2 What michi think of the position ?</h2>
+<p>After you have played some moves with michi, you may want to know what is its
+estimate of the position. You can obtain this information from commands
+accessible in the <em>Analyze commands</em> window (as in fig6. below).</p>
+<div class="figure align-center">
+<img alt="img/img6.png" src="img/img6.png" style="width: 244.5px; height: 329.25px;" />
+<p class="caption">fig6. Analyze commands</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p>If this window is not visible, you can obtain it by selecting the
+&quot;Analyze commands&quot; entry in the Tool Menu.</p>
+<div class="figure align-center">
+<img alt="img/img7.png" src="img/img7.png" style="width: 558.75px; height: 407.25px;" />
+<p class="caption">fig7. Make the Analyze Commands window visible</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p>Any of the analyze commands can be run either by double clicking on it or by
+selecting a command and clicking on the <em>Run</em> button.
+It is also possible to have a command executed automatically after each move.</p>
+<p>The three first commands are for changing parameters that control the behavior
+of michi-c. They will be described in next subsection (2.4).</p>
+<p>The other commands give meaningful answer only just after michi-c has played
+its move.</p>
+<p><em>Status Dead</em></p>
+<blockquote>
+mark the stones estimated as dead by michi-c
+(not always accurate as you will notice).</blockquote>
+<dl class="docutils">
+<dt><em>Best sequence</em></dt>
+<dd>shows the next 5 best continuation as estimated by mcts.</dd>
+</dl>
+<div class="figure align-center">
+<img alt="img/img14.png" src="img/img14.png" style="width: 497.25px; height: 382.5px;" />
+<p class="caption">fig8. Best sequence</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<dl class="docutils">
+<dt><em>Best moves</em></dt>
+<dd>shows the winrate of the 5 best moves (i.e most visited by MCTS)</dd>
+</dl>
+<div class="figure align-center">
+<img alt="img/img13.png" src="img/img13.png" style="width: 497.25px; height: 382.5px;" />
+<p class="caption">fig9. Best moves</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<dl class="docutils">
+<dt><em>Owner_Map</em></dt>
+<dd>represent for each intersection the percentage of white or black possession
+at the end of the playouts (big black square = 100 % black possession,
+big white square = 100 % white possession, nothing = around 50 %)</dd>
+</dl>
+<div class="figure align-center">
+<img alt="img/img11.png" src="img/img11.png" style="width: 497.25px; height: 382.5px;" />
+<p class="caption">fig10. Owner Map</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<dl class="docutils">
+<dt><em>Visit Count</em></dt>
+<dd>represent the number of visits for each move in the root node of MCTS.
+The size of the square is maximum for the most visited move and the
+surface of each square is proportional to the visit count (discretized by
+step of 10 %, so 0%, 1%, .., 5% are the same, 6 %, 7%, ..., 14 % , etc.)</dd>
+</dl>
+<div class="figure align-center">
+<img alt="img/img12.png" src="img/img12.png" style="width: 497.25px; height: 382.5px;" />
+<p class="caption">fig11. Visit count</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<dl class="docutils">
+<dt><em>Histogram of scores</em></dt>
+<dd>This is a primitive representation of the histogram of the playout scores.
+Should find a good way to show a beautiful python graphic in next version.</dd>
+</dl>
+<div class="figure align-center">
+<img alt="img/img15.png" src="img/img15.png" style="width: 372.75px; height: 792.0px;" />
+<p class="caption">fig12. Primitive view of histogram of playouts scores</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+</div>
+<div class="section" id="live-graphics">
+<h2>2.3 Live graphics</h2>
+<p>All the graphics commands (marked with a gfx prefix in the <em>Analyze commands</em>
+windows) except <em>Histogram of scores</em>, can also be updated at regular intervals
+during the search providing an animation that can be fun to watch.</p>
+<p>This is done by setting the <em>Live gfx</em> and <em>Live gfx interval</em> parameters in
+the <em>General Parameters</em> setting window as seen on the figure 12 below.</p>
+</div>
+<div class="section" id="changing-the-michi-c-parameters">
+<h2>2.4 Changing the michi-c parameters</h2>
+<p>By running one of the three commands <em>General Parameters</em>,
+<em>Tree Policy Parameters</em> or <em>Random Policy Parameters</em> you will get a new
+window (respectively shown in fig.12, fig.13 and fig.14) that will allow you
+to change the parameters at any moment when michi is not thinking.</p>
+<p>The modification process is natural and does not need any explanation.
+It takes place after you click on OK.</p>
+<p>There has not been any particular thought about the order of the parameters
+and it could certainly be improved.</p>
+<div class="figure align-center">
+<img alt="img/img8.png" src="img/img8.png" style="width: 276.75px; height: 300.0px;" />
+<p class="caption">fig12. General Parameters settings</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p>Definitions:</p>
+<pre class="literal-block">
+use_dynamic_komi
+    dynamic komi is used in the current version of michi-c only for
+    handicap games (linear version). It can be enabled or disabled.
+
+komi_per_handicap_stone
+    this value multiplied by the number of handicap stones will be the
+    delta komi at the beginning of the game
+
+play_until_the_end
+    when checked this option disallows early passing (useful on cgos)
+
+random_seed
+    random seed. -1 generate a true random seed that changes for each game
+
+REPORT_PERIOD
+    number of playouts between each report by michi on the standard output
+    note: useful only if verbosity &gt; 0
+
+verbosity
+    0, 1 or 2 : control the verbosity of michi on the standard output
+
+RESIGN_THRES
+    winrate threshold (in [0.0,1.0].
+    When the winrate becomes below this threshold, michi resign
+
+FASTPLAY20_THRES
+    if at 20% playouts winrate is &gt; FASTPLAY20_THRES, stop reading
+
+FASTPLAY5_THRES
+    if at 5% playouts winrate is &gt; FASTPLAY5_THRES, stop reading
+
+Live_gfx
+    None, best_moves, owner_map, principal_variation or visit_count
+    if different from None, gogui will display at regular intervals the
+    same graphics as in figures 8 to 11.
+
+Live_gfx_interval
+    the interval (number of playouts) between live graphics refresh
+</pre>
+<div class="figure align-center">
+<img alt="img/img9.png" src="img/img9.png" style="width: 263.25px; height: 351.0px;" />
+<p class="caption">fig13. Tree Policy Parameters settings</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p>Definitions:</p>
+<pre class="literal-block">
+N_SIMS
+    Number of simulations per move (search).
+    Note: this value can be modified when playing with time limited constraints
+
+RAVE_EQUIV
+    number of visits which makes the weight of RAVE simulations and real
+    simulations equal
+
+EXPAND_VISITS
+    number of visits before a node is expanded
+
+PRIOR_EVEN
+    should be even. This represent a 0.5 prior
+
+PRIOR_SELFATARI
+    NEGATIVE prior if the move is a self-atari
+
+PRIOR_CAPTURE_ONE
+    prior if the move captures one stone
+
+PRIOR_CAPTURE_MANY
+    prior if the move captures many stones
+
+PRIOR_PAT3
+    prior if the move match a 3x3 pattern
+
+PRIOR_LARGEPATTERN
+    multiplier for the large patterns probability
+    note: most moves have relatively small probability
+
+PRIOR_CFG[]
+    prior for moves in cfg distance 1, 2, 3
+
+PRIOR_EMPTYAREA
+    prior for moves in empty area
+</pre>
+<div class="figure align-center">
+<img alt="img/img10.png" src="img/img10.png" style="width: 284.25px; height: 155.25px;" />
+<p class="caption">fig14. Random Policy Parameters settings</p>
+<div class="legend">
+<!--  -->
+</div>
+</div>
+<p>Definitions:</p>
+<pre class="literal-block">
+PROB_HEURISTIC_CAPTURE (0.90)
+    probability of heuristic capture suggestions being taken in playout
+
+PROB_HEURISTIC_PAT3 (0.95)
+    probability of heuristic 3x3 pattern suggestions being taken in playout
+
+PROB_SSAREJECT (0.90)
+    probability of rejecting suggested self-atari in playout
+
+PROB_RSAREJECT (0.50)
+    probability of rejecting random self-atari in playout
+    this is lower than above to allow nakade
+</pre>
+</div>
+</div>
+<div class="section" id="reference-of-michi-c-gtp-commands">
+<h1>3. Reference of michi-c gtp commands</h1>
+<p>The list of all gtp commands understood by michi-c (version 1.4) is
+described in the following sections</p>
+<div class="section" id="standard-gtp-commands">
+<h2>3.1 Standard gtp commands</h2>
+<p>The following standard gtp commands are implemented.
+Please refer to [1] for the specification of each command.</p>
+<blockquote>
+<em>protocol_version,
+name,
+version,
+known_command,
+list_commands,
+quit,
+boardsize,
+clear_board,
+komi,
+play,
+genmove,
+set_free_handicap,
+loadsgf,
+time_left,
+time_settings,
+final_score,
+final_status_list,
+undo</em></blockquote>
+<p>The standard is implemented exept for</p>
+<dl class="docutils">
+<dt><em>time_settings</em></dt>
+<dd>only absolute time setting is implemented yet</dd>
+<dt><em>loadsgf</em></dt>
+<dd>michi-c can only read simple SGF files, i.e. files with no
+variations nor games collections  (see [3])
+but this is not carefully checked so
+expect some crash if you try to play with the limits.</dd>
+</dl>
+<p>These limitations will be removed in some next release.</p>
+</div>
+<div class="section" id="gogui-specific-commands-or-extensions-used-by-gogui">
+<h2>3.2 Gogui specific commands (or extensions used by gogui)</h2>
+<p>Please refer to [2] for the specification of each command.</p>
+<blockquote>
+<em>gogui-analyze_commands,
+gogui-play_sequence,
+gogui-setup,
+gogui-setup_player,
+gg-undo,
+kgs-genmove_cleanup</em></blockquote>
+</div>
+<div class="section" id="commands-to-get-or-set-parameters">
+<h2>3.3 Commands to get or set parameters</h2>
+<p>Maybe the most important commands to know from a user point of view are the
+three commands <em>param_general</em>, <em>param_playout</em> and <em>param_tree</em> that allow us
+to change the parameters controlling the behavior of michi-c during the game.</p>
+<p>If you give no argument to the command it will simply print the current value
+of all the parameters it controls, else you must give two arguments : the name
+of a parameter and the value you want to give to it.</p>
+<p>If the given name is not known from the command, it is ignored and the command
+behaves as if it was called without argument.</p>
+<p>The names recognized by these commands are those described in section 2.4.</p>
+<p><em>param_general</em>:</p>
+<pre class="literal-block">
+Function:  Read or write internal parameters of michi-c (General)
+Arguments: name of a parameter or none
+Fails:     No value (if only a name was given)
+Returns:   A string formatted for gogui analyze command of param type
+</pre>
+<p><em>param_playout</em>:</p>
+<pre class="literal-block">
+Function:  Read or write internal parameters of michi-c (Playout Policy)
+Arguments: name of a parameter or none
+Fails:     No value (if only a name was given)
+Returns:   A string formatted for gogui analyze command of param type
+</pre>
+<p><em>param_tree</em>:</p>
+<pre class="literal-block">
+Function:  Read or write internal parameters of michi-c (Tree Policy)
+Arguments: name of a parameter or none
+Fails:     No value (if only a name was given)
+Returns:   A string formatted for gogui analyze command of param type
+</pre>
+</div>
+<div class="section" id="rest-of-michi-c-specific-commands">
+<h2>3.4 Rest of michi-c specific commands</h2>
+<p><em>best_moves</em>:</p>
+<pre class="literal-block">
+Function:  Build a list of the 5 best moves (5 couples: point winrate)
+Arguments: none
+Fails:     never
+Returns:   A string formatted for gogui analyze command of pspair type
+</pre>
+<dl class="docutils">
+<dt><em>cputime</em></dt>
+<dd>This is a command used by the gogui tool gogui-twogtp.
+It returns a time in second, whose origin is undefined.</dd>
+<dt><em>debug &lt;subcmd&gt;</em></dt>
+<dd>This command is only used for debugging purpose and regression testing.
+People that need it are able to read the code and I believe it is not
+necessary to make this manual longer in order to describe it.</dd>
+<dt><em>help</em></dt>
+<dd>This is a synonym for list_commands</dd>
+</dl>
+<p><em>owner_map</em>:</p>
+<pre class="literal-block">
+Function:  Compute a value in [-1,1] for each point: -1 = 100% white, 1=100 % black
+Arguments: none
+Fails:     never
+Returns:   A string formatted for gogui analyze command of gfx/INFLUENCE type
+</pre>
+<p><em>principal_variation</em>:</p>
+<pre class="literal-block">
+Function:  Compute the best sequence (5 moves) from the current position
+Arguments: none
+Fails:     never
+Returns:   A string formatted for gogui analyze command of gfx VAR type
+</pre>
+<p><em>score_histogram</em>:</p>
+<pre class="literal-block">
+Function:  Build histogram of playout scores
+Arguments: none
+Fails:     never
+Returns:   A string formatted for gogui analyze command of hstring type
+</pre>
+<p><em>visit_count</em>:</p>
+<pre class="literal-block">
+Function:  Compute a value in [0,1] for each point: 0 = never, 1= most visited
+Arguments: none
+Fails:     never
+Returns:   A string formatted for gogui analyze command of gfx/INFLUENCE type
+</pre>
+</div>
+</div>
+<div class="section" id="michi-c-command-line-arguments">
+<h1>4. Michi-c command line arguments</h1>
+<p>When michi is run from the command line without any parameter or as:</p>
+<pre class="literal-block">
+$ ./michi -h
+</pre>
+<p>it will write a simple usage message:</p>
+<pre class="literal-block">
+usage: michi mode [config.gtp]
+
+where mode =
+   * gtp         play gtp commands read from standard input
+   * mcbenchmark run a series of playouts (number set in config.gtp)
+   * mcdebug     run a series of playouts (verbose, nb of sims as above)
+   * tsdebug     run a series of tree searches
+   * defaults    write a template of config file on stdout (defaults values)
+and
+   * config.gtp  an optional file containing gtp commands
+</pre>
+<p>The most commonly used mode values are <strong>gtp</strong> and <strong>defaults</strong>.</p>
+<p>Mode <strong>gtp</strong> launches the gtp loop that will be ended by sending the
+command <em>quit</em> to michi.</p>
+<p>Mode <strong>defaults</strong> print on the standard output the current default value
+of every modifiable parameter in michi and leave immediately.:</p>
+<pre class="literal-block">
+param_general                 use_dynamic_komi 0
+param_general          komi_per_handicap_stone 7.0
+param_general               play_until_the_end 0
+param_general                      random_seed 1
+param_general                    REPORT_PERIOD 200000
+param_general                        verbosity 2
+param_general                     RESIGN_THRES 0.20
+param_general                 FASTPLAY20_THRES 0.80
+param_general                  FASTPLAY5_THRES 0.95
+param_general                         Live_gfx None
+param_general                Live_gfx_interval 1000
+param_tree                              N_SIMS 2000
+param_tree                          RAVE_EQUIV 3500
+param_tree                       EXPAND_VISITS 8
+param_tree                          PRIOR_EVEN 10
+param_tree                     PRIOR_SELFATARI 10
+param_tree                   PRIOR_CAPTURE_ONE 15
+param_tree                  PRIOR_CAPTURE_MANY 30
+param_tree                          PRIOR_PAT3 10
+param_tree                  PRIOR_LARGEPATTERN 100
+param_tree                        PRIOR_CFG[0] 24
+param_tree                        PRIOR_CFG[1] 22
+param_tree                        PRIOR_CFG[2] 8
+param_tree                     PRIOR_EMPTYAREA 10
+param_playout           PROB_HEURISTIC_CAPTURE 0.90
+param_playout              PROB_HEURISTIC_PAT3 0.95
+param_playout                   PROB_SSAREJECT 0.90
+param_playout                   PROB_RSAREJECT 0.50
+</pre>
+<p>This list is interesting in itself.</p>
+<p>In addition by redirecting it to a file, you obtain a configuration file that
+you can use as the optional parameter (config.gtp).</p>
+<p>When michi is used in <strong>gtp</strong> mode with this second argument, all the gtp
+commands placed in the config.gtp file will be executed at initialization.</p>
+<p>This feature can be used to modify the default parameters or for example to
+load a given position from a SGF file.</p>
+<p>The three other modes <strong>mcbenchmark</strong>, <strong>mcdebug</strong> or <strong>tsdebug</strong> are, as their
+name suggest useful only for debugging and benchmarking.</p>
+</div>
+</div>
+</body>
+</html>

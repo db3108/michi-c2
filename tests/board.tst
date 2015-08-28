@@ -2,6 +2,8 @@
 # tests of the michi board subsystem
 #-----------------------------------
 
+boardsize 13
+
 # initial board
 # -------------
 10 debug blocks_OK c4
@@ -50,7 +52,7 @@ play b c5
 310 debug blocks_OK c5
 #? [true]
 debug setpos f1 pass h1 pass g2 pass
-play b g1
+play w g1
 320 debug blocks_OK g1
 #? [true]
 debug setpos e5 pass f5 pass f4 pass e3 pass
@@ -66,7 +68,7 @@ play b b1
 410 debug blocks_OK a1
 #? [true]
 debug setpos e5 e6 f6 f5 e7 f7
-play b d6
+play w d6
 420 debug blocks_OK d6
 #? [true]
 debug setpos g6 pass e4 pass d5 pass
@@ -74,10 +76,10 @@ play b e6
 430 debug blocks_OK e6
 #? [true]
 debug setpos a8 a9 b8 b9 c9 c10 a11 b11 b10
-play w a10
+play b a10
 440 debug blocks_OK a10
 #? [true]
-play b b10
+play w b10
 450 debug blocks_OK b10
 #? [true]
 
@@ -85,14 +87,14 @@ play b b10
 # -------------------
 clear_board
 debug setpos e5 pass f6 f5 e7 f7 d6
-play b e6
+play w e6
 510 debug blocks_OK e6
 #? [true]
-debug setpos g6 pass
-play b e6
+debug setpos g6
+play w e6
 520 debug blocks_OK e6
 #? [true]
-530 debug ko
+530 debug pos ko
 #? [F6]
 
 # Query block data

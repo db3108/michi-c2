@@ -1,19 +1,18 @@
 // board.c -- Implementation of Go rules and data for Go heuristics
-#include "michi.h"
+#include "board.h"
 /* ===========================================================================
  * Board provides functions to play the ancient game of Go by computer
- *
- * There are functions for playing moves, playing random games, scoring 
- * finished games (only those played by computer up to the very end), querying 
- * status of the board.
  *
  * The file board.c contains a minimal set of functions that are necessary to
  * play (efficiently) and score random games which are used by higher level
  * algorithms like MCTS (Monte-Carlo Tree Search). 
+ * There are functions for playing and undoing moves and querying the status of 
+ * the board. The undo_move() is limited to one undo, the capability to undo 
+ * any number of successive moves is delegated to the caller.
+ *
  * It is designed so that all the working functions involved to play random 
- * games (functions in board.c, mcplayout() and score() in michi.c) can fit 
- * in the L1 Instruction Cache of recent Intel Processors (32 Kb) and the data 
- * working set accordingly fit in the L1 Data Cache (also 32 Kb).
+ * games can fit in the L1 Instruction Cache of recent Intel Processors (32 Kb)
+ * and the data working set accordingly fit in the L1 Data Cache (also 32 Kb).
  *
  * The main purpose of the functions included in this file is to play a move
  * and to incrementally update the state of the board during the games. 
@@ -58,7 +57,7 @@ char is_eyeish(Position *pos, Point pt)
 }
 
 char is_eye(Position *pos, Point pt)
-// test if pt is an eye and return its color or 0.
+// Test if pt is an eye and return its color or 0 if it is not
 //                                                  #########   
 // Note: this test cannot detect true eyes like     . . X . #   or    X X X
 //                                                    X . X #         X   X
@@ -98,9 +97,9 @@ Byte compute_env4(Position *pos, Point pt, int offset)
 }
 
 void put_stone(Position *pos, Point pt)
-// Always put a stone of color 'X'. See discussion on env4 in patterns.c
+// Put a stone at point pt. Update env4 and env4d neighbor data
 {
-    if (pos->n%2 == 0) {  // BLACK to play
+    if (pos->to_play == BLACK) {  // BLACK to play
         pos->env4[pt+N+1] |= 0x11;
         pos->env4[pt-1]   |= 0x22;
         pos->env4[pt-N-1] |= 0x44;
@@ -125,7 +124,7 @@ void put_stone(Position *pos, Point pt)
 }
 
 void remove_stone(Position *pos, Point pt)
-// Always remove a stone of color 'x' (cheat done by caller when undo move)
+// Remove a stone at point pt. Update env4 and env4d neighbor data
 {
     pos->env4[pt+N+1] &= 0xEE;
     pos->env4[pt-1]   &= 0xDD;
@@ -139,7 +138,60 @@ void remove_stone(Position *pos, Point pt)
 }
 
 //===================================== Blocks ================================
+int cmpint(const void *i, const void *j)
+{
+    return *(int *)i - *(int *)j;
+}
+
+void compute_block(Position *pos, Point pt, Slist stones, Slist libs, int nlibs)
+// Compute block at pt : list of stones and list of liberties
+// Return early when nlibs liberties are found
+{
+    Color color=point_color(pos, pt);
+    int   head=2, k, tail=1;
+    Point n;
+
+    mark_init(mark1); slist_clear(libs);
+    stones[1] = pt; mark(mark1, pt);
+    while(head>tail) {
+        pt = stones[tail++];
+        FORALL_NEIGHBORS(pos, pt, k, n)
+            if (!is_marked(mark1, n)) {
+                mark(mark1, n);
+                if (point_color(pos, n) == color)    stones[head++] = n;
+                else if (point_color(pos, n) == EMPTY) {
+                    slist_push(libs, n);
+                    if (slist_size(libs) >= nlibs) goto finished;
+                }
+            }
+    }
+finished:
+    stones[0] = head-1;
+    mark_release(mark1);
+}
+
+void compute_big_eye(Position *pos, Point pt, Slist points)
+// Compute big eye at pt (assumed to be EMPTY) -> list of points
+{
+    int   head=2, k, tail=1;
+    Point n;
+
+    mark_init(mark1);
+    points[1] = pt; mark(mark1, pt);
+    while(head>tail) {
+        pt = points[tail++];
+        FORALL_NEIGHBORS(pos, pt, k, n)
+            if (!is_marked(mark1, n)) {
+                mark(mark1, n);
+                if (point_color(pos, n) == EMPTY)    points[head++] = n;
+            }
+    }
+    points[0] = head-1;
+    mark_release(mark1);
+}
+
 __INLINE__ Block new_blkid(Position *pos)
+// Generate a new block id (i.e. one that is not already in use)
 {
     int b;
     for (b=1 ; b<MAX_BLOCKS ; b++)
@@ -221,6 +273,13 @@ void block_make_list_of_points(Position *pos, Block b, Slist points, Point pt)
     mark_release(mark1);
 }
 
+__INLINE__ void block_clear_libs(Position *pos, Block b)
+// Delete all liberties from block b
+{
+    memset(pos->libs[b], 0, LIBS_SIZE*sizeof(Libs));
+    pos->nlibs[b] = 0;
+}
+
 __INLINE__ int block_capture(Position *pos, Block b, Point pt)
 // Remove stones of block b from the board (b contains pt), reset data of b
 // Return the number of captured stones.
@@ -247,12 +306,9 @@ __INLINE__ int block_capture(Position *pos, Block b, Point pt)
     }
 
     // reset block data to zero
-    pos->nlibs[b] = 0;
-    pos->size[b] = 0;
-    for (int k=0 ; k<LIBS_SIZE ; k++) {
-        pos->libs[b][k] = 0;
-    }
-    
+    block_clear_libs(pos, b);
+    pos->bsize[b] = 0;
+
     return captured;
 }
 
@@ -271,6 +327,19 @@ __INLINE__ int block_remove_lib(Position *pos, Block b, Point pt, Point l)
     return captured;        // number of captured stones
 }
 
+__INLINE__ void block_remove_lib_undo(Position *pos, Block b, Point pt, Point l)
+// Remove liberty l of block b. Normally return 1, but could return 0 if 'l'
+// is not found in the liberties of block b (this is not an error)
+// This version is special for undoing move capture (do not capture back ko)
+{
+    int k = (l-N)>>5, r = (l-N)&31, res;
+    res = (pos->libs[b][k] & (1<<r));
+    if (res) {
+        pos->libs[b][k] &= ~(1<<r);
+        pos->nlibs[b]--;
+    }
+}
+
 __INLINE__ void block_merge(Position *pos, Block b1, Block b2)
 // Merge 2 blocks. If b1==b2 nothing to do (this is not an error)
 {
@@ -280,11 +349,11 @@ __INLINE__ void block_merge(Position *pos, Block b1, Block b2)
     FORALL_POINTS(pos, pt)
         if (point_block(pos, pt) == b2)
             pos->block[pt] = b1;
-    int nstones = (int) pos->size[b1] + (int) pos->size[b2];
+    int nstones = block_size(pos, b1) + block_size(pos, b2);
     if (nstones<256)
-        pos->size[b1] = nstones;
+        pos->bsize[b1] = nstones;
     else
-        pos->size[b1] = 255;
+        pos->bsize[b1] = 255;
 
     // Merge libs
     for (int k=0 ; k<LIBS_SIZE ; k++) {
@@ -294,30 +363,35 @@ __INLINE__ void block_merge(Position *pos, Block b1, Block b2)
 
     // Delete block b2
     pos->nlibs[b2] = 0;
-    pos->size[b2] = 0;
+    pos->bsize[b2] = 0;
 }
 
 __INLINE__ Block point_create_block(Position *pos, Point pt)
+// Create a new block at point pt (assumed EMPTY)
 {
     Block b = new_blkid(pos);
-    pos->size[b] = 1;
+    pos->bsize[b] = 1;
     return b;
 }
 
 int update_blocks(Position *pos, Point pt)
-// Update the blocks after the move at point pt
+// Update the blocks if a move is done at point pt. No change if move is illegal
 {
     Block b1=0, b2=0, b3=0, b4=0;   // initialization to make compiler happy
     Color other=color_other(pos->to_play);
     Code4 Ecode, Xcode;
     int   captured=0, k;
     Point n;
+    pos->undo_capture = 0;
 
     // Update blocks of opponent
     FORALL_NEIGHBORS(pos, pt, k, n) {
         if (point_color(pos, n) == other) {
             Block b = point_block(pos, n);
-            captured += block_remove_lib(pos, b, n, pt);
+            int ncaps = block_remove_lib(pos, b, n, pt);
+            if (ncaps)
+                pos->undo_capture |= 1<<k;
+            captured += ncaps;
         }
     }
 
@@ -343,10 +417,10 @@ int update_blocks(Position *pos, Point pt)
 
     // Update stones of friend block(s)
 update_friend_blocks:
-    if (pos->n%2 == 0)
-        Xcode = select_black(point_env4(pos, pt)); // BLACK to play
+    if (pos->to_play == BLACK)
+        Xcode = select_black(point_env4(pos, pt));
     else 
-        Xcode = select_white(point_env4(pos, pt)); // WHITE to play
+        Xcode = select_white(point_env4(pos, pt));
     pos->caps[pos->to_play & 1] += captured;
     pos->ko = 0;
     put_stone(pos, pt);
@@ -446,7 +520,7 @@ merge2:
     block_merge(pos, b1, b2);
     pos->nlibs[b1] = block_count_libs(pos, b1);
 extend:
-    if (pos->size[b1]<255) pos->size[b1]++;
+    if (pos->bsize[b1]<255) pos->bsize[b1]++;
     pos->block[pt] = b1;
     block_remove_lib_extend(pos, b1, pt);
 
@@ -460,15 +534,27 @@ update_libs:
 }
 
 //===================================== Moves =================================
-char* empty_position(Position *pos)
-// Reset pos to an initial board position
+Position* new_position()
+// Return a position with size of board initialized
 {
-    int k = 0;
+    Position *pos = michi_malloc(sizeof(Position));
+    pos->size = N;
+    empty_position(pos);
+    return pos;
+}
+
+char* empty_position(Position *pos)
+// Reset pos to an initial empty board position
+{
+    int k = 0, size = pos->size;
     memset(pos, 0, sizeof(Position));
-    for (int col=0 ; col<=N ; col++) pos->color[k++] = OUT;
-    for (int row=1 ; row<=N ; row++) {
+    pos->size = size;
+    for (int row=0 ; row <= (N-size) ; row++)
+        for (int col=0 ; col<=N ; col++) pos->color[k++] = OUT;
+    for (int row=N-size+1 ; row<=N ; row++) {
         pos->color[k++] = OUT;
-        for (int col=1 ; col<=N ; col++) pos->color[k++] = EMPTY;
+        for (int col=1 ; col<=size ; col++) pos->color[k++] = EMPTY;
+        for (int col=size+1 ; col<=N ; col++) pos->color[k++] = OUT;
     }
     for (int col=0 ; col<W ; col++) pos->color[k++] = OUT;
     FORALL_POINTS(pos, pt) {
@@ -485,8 +571,10 @@ char* empty_position(Position *pos)
 
 char* play_move(Position *pos, Point pt)
 // Play a move at point pt (color is imposed by alternate play)
+// No change of pos if move is illegal
 {
     int   captured=0;
+    Point ko_old = pos->ko;
 
     if (pt == pos->ko) return "Error Illegal move: retakes ko";
 
@@ -494,19 +582,114 @@ char* play_move(Position *pos, Point pt)
     if (captured == -1) return "Error Illegal move: suicide";
 
     // Finish update of the position (swap color)
+    pos->ko_old = ko_old;
     (pos->n)++;
     //assert(env4_OK(pos));
+    pos->last3 = pos->last2;
     pos->last2 = pos->last;
     pos->last  = pt;
     pos->to_play = color_other(pos->to_play);
-    //michi_assert(pos, blocks_OK(pos, pt));
+    michi_assert(pos, blocks_OK(pos, pt));
     return "";          // Move OK
 }
 
-char* pass_move(Position *pos)
-// Pass - i.e. simply flip the position
+char* undo_move(Position *pos)
+// Undo the last move
+// WARNING: this is a limited version that can only undo one move suitable for
+//          undoing move in the random playouts (used minimum memory)
+// In order to implement a full undo function, the caller must save the list of
+// moves and undo_capture (4 bits) and update last, last2, last3 and 
+// undo_capture before calling undo_move()
+
+// TODO optimize undo block extend
+//      Currently, the block is scanned and a new block is rebuild
 {
+    Block b, bl;
+    Color c=point_color(pos, pos->last), other=color_other(c);
+    int k;
+    Point l=pos->last, libs[BOARDSIZE], n, points[BOARDSIZE];
+
+    // Create again blocks captured by the last move
+    if (pos->undo_capture) {
+        pos->color[l] = c;
+        int ncaptured = 0;
+        for (int k=0; k<4 ; k++) {
+            if (pos->undo_capture & (1<<k)) {
+                n = l + delta[k];
+                compute_big_eye(pos, n, points);
+                Block bn = new_blkid(pos);
+                pos->bsize[bn] = slist_size(points);
+                ncaptured += slist_size(points);
+                FORALL_IN_SLIST(points, s) {
+                    put_stone(pos, s);
+                    for (int j=0 ; j<4 ; j++) {
+                        Point m=s+delta[j];
+                        if (point_color(pos, m) == c) {
+                            b = point_block(pos, m);
+                            block_remove_lib_undo(pos, b, 0, s);
+                        }
+                    }
+                    pos->block[s] = bn;
+                }
+                block_add_lib(pos, bn, l);
+            }
+        }
+        pos->caps[c & 1] -= ncaptured;
+        pos->color[l] = EMPTY;
+    }
+
+    // Update other attributes of the position (order must be preserved)
+    pos->last = pos->last2;
+    pos->last2 = pos->last3;
+    pos->ko = pos->ko_old;
+    pos->n--;
+    pos->to_play = color_other(pos->to_play);
+    if (l==PASS_MOVE) goto finished;
+
+    // Update information at the point of the last move
+    bl = point_block(pos, l);
+    remove_stone(pos, l);
+    pos->block[l] = 0;
+    
+    // Update the position (correct only for block create, extend and merge)
+    FORALL_NEIGHBORS(pos, l, k, n) {
+        if (point_color(pos, n) == other) {
+            // opponent neighbor
+            b = point_block(pos, n);
+            block_add_lib(pos, b, l);
+        }
+        else if (point_color(pos, n) == c) {
+            // friend neighbor
+            b = point_block(pos, n);
+            if (b == bl) {
+                compute_block(pos, n, points, libs, BOARDSIZE);
+                Block bn = new_blkid(pos);
+                pos->bsize[bn] = slist_size(points);
+                FORALL_IN_SLIST(points, s)
+                    pos->block[s] = bn;
+                FORALL_IN_SLIST(libs, l)
+                    block_add_lib(pos, bn, l);
+            }
+        }
+    }
+    // Delete the block bl that is no more useful 
+    block_clear_libs(pos, bl);
+    pos->bsize[bl] = 0;
+
+finished:
+    // check that the updated Position is OK
+    michi_assert(pos, all_blocks_OK(pos));
+    michi_assert(pos, env4_OK(pos));
+    return "";
+}
+
+char* pass_move(Position *pos)
+// Play a Pass move in the current position 
+{
+    pos->ko_old = pos->ko;
+    pos->undo_capture = 0;
     (pos->n)++;
+    pos->last3 = pos->last2;
     pos->last2 = pos->last;
     pos->last  = pos->ko = 0;
     pos->to_play = color_other(pos->to_play);
@@ -514,30 +697,50 @@ char* pass_move(Position *pos)
 }
 
 //================================ Go heuristics ==============================
-void make_list_neighbors(Position *pos, Point pt, Slist points)
-{
-    slist_clear(points);
-    if (pt == PASS_MOVE) return;
-    slist_push(points, pt);
-    for (int k=0 ; k<8 ; k++)
-        if (point_color(pos, pt+delta[k]) != OUT)
-            slist_push(points, pt+delta[k]);
-    slist_shuffle(points);
-}
-
 void make_list_last_moves_neighbors(Position *pos, Slist points)
 // generate a randomly shuffled list of points including and surrounding 
 // the last two moves (but with the last move having priority)
 {
-    Point last2_neighbors[12];
-    make_list_neighbors(pos, pos->last,points);
-    make_list_neighbors(pos, pos->last2,last2_neighbors);
-    FORALL_IN_SLIST(last2_neighbors, n)
-        slist_insert(points, n);     // insert n if it is not already in points
+    Point l, last2_neighbors[12];
+    mark_init(mark1);
+    if (pos->last == PASS_MOVE)
+        slist_clear(points);
+    else {
+        l = pos->last;
+        points[0] = 9;
+        points[1] = l; mark(mark1, l);
+        points[2] = l + delta[0]; mark(mark1, l + delta[0]);
+        points[3] = l + delta[1]; mark(mark1, l + delta[1]);
+        points[4] = l + delta[2]; mark(mark1, l + delta[2]);
+        points[5] = l + delta[3]; mark(mark1, l + delta[3]);
+        points[6] = l + delta[4]; mark(mark1, l + delta[4]);
+        points[7] = l + delta[5]; mark(mark1, l + delta[5]);
+        points[8] = l + delta[6]; mark(mark1, l + delta[6]);
+        points[9] = l + delta[7]; mark(mark1, l + delta[7]);
+        slist_shuffle(points);
+    }
+    if (pos->last2 != PASS_MOVE) {
+        l = pos->last2;
+        last2_neighbors[0] = 9;
+        last2_neighbors[1] = l;
+        last2_neighbors[2] = l + delta[0];
+        last2_neighbors[3] = l + delta[1];
+        last2_neighbors[4] = l + delta[2];
+        last2_neighbors[5] = l + delta[3];
+        last2_neighbors[6] = l + delta[4];
+        last2_neighbors[7] = l + delta[5];
+        last2_neighbors[8] = l + delta[6];
+        last2_neighbors[9] = l + delta[7];
+        slist_shuffle(last2_neighbors);
+        FORALL_IN_SLIST(last2_neighbors, n)
+            if (!is_marked(mark1, n))
+                slist_push(points, n);
+    }
+    mark_release(mark1);
 }
 
 void make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks, Point pt) 
-// Return a list of (opponent) blocks in contact with block b
+// Return a list of blocks in atari in contact with block b
 {
     Color c;
     int   k;
@@ -589,13 +792,13 @@ void compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE])
     }
 }
 
-int line_height(Point pt)
+int line_height(Point pt, int size)
 // Return the line number above nearest board edge (0 based)
 {
     div_t d = div(pt,N+1);
     int row = d.quot, col=d.rem;
-    if (row > N/2) row = N+1-row;
-    if (col > N/2) col = N+1-col;
+    if (row > size/2) row = size+1-row;
+    if (col > size/2) col = size+1-col;
     if (row < col) return row-1;
     else           return col-1;
 }

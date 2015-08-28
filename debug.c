@@ -1,222 +1,5 @@
 #include "michi.h"
 static char buf[BUFLEN];
-static int  delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
-
-//============================= messages logging ==============================
-FILE    *flog;             // FILE to log messages
-int     c1,c2;             // counters for warning messages
-int     nmsg;              // number of written log entries
-
-void too_many_msg(void)
-// if too many messages have been logged, print a last error and exit 
-{
-    fprintf(stderr,"Too many messages have been written in log file "
-                       " (maximum 100000)\n");
-    fprintf(flog,"Too many messages (maximum 100000)\n");
-    exit(-1);
-}
-
-void log_fmt_s(char type, const char *msg, const char *s)
-// Log a formatted message (string parameter)
-{
-    fprintf(flog, "%c %5d/%3.3d ", type, c1, c2);
-    fprintf(flog, msg, s); fprintf(flog, "\n");
-    if(type == 'E') {
-        fprintf(stderr,"%c %5d/%3.3d ", type, c1, c2);
-        fprintf(stderr, msg, s); fprintf(stderr,"\n");
-    }
-    if(nmsg++ > 1000000) too_many_msg();
-}
-
-void log_fmt_i(char type, const char *msg, int n)
-// Log a formatted message (int parameter)
-{
-    sprintf(buf, msg, n);
-    log_fmt_s(type, "%s", buf);
-}
-
-void log_fmt_p(char type, const char *msg, Point pt)
-// Log a formatted message (point parameter)
-{
-    char str[8];
-    sprintf(buf, msg, str_coord(pt,str));
-    log_fmt_s(type,"%s", buf);
-}
-//============================= debug subcommands =============================
-void dump_env4(Byte env4, Byte true_env4)
-{
-    for (int i=0 ; i<8 ; i++) {
-        if (i == 4) fprintf(stderr, " ");
-        if (env4 & 128)
-            fprintf(stderr, "1");
-        else
-            fprintf(stderr, "0");
-        env4 <<= 1;
-    }
-    fprintf(stderr, " (true: ");
-    for (int i=0 ; i<8 ; i++) {
-        if (i==4) fprintf(stderr, " ");
-        if (true_env4 & 128)
-            fprintf(stderr, "1");
-        else
-            fprintf(stderr, "0");
-        true_env4 <<= 1;
-    }
-    fprintf(stderr, ")\n");
-}
-
-int env4_OK(Position *pos)
-{
-    FORALL_POINTS(pos,pt) {
-        if (point_color(pos,pt) == OUT) continue;
-        if (point_env4(pos,pt) != compute_env4(pos, pt, 0)) {
-            fprintf(stderr, "%s ERR env4 = ", str_coord(pt,buf));
-            dump_env4(point_env4(pos,pt), compute_env4(pos,pt,0));
-            return 0;
-        }
-        if (point_env4d(pos,pt) != compute_env4(pos,pt,4)) {
-            fprintf(stderr, "%s ERR env4d = ", str_coord(pt,buf));
-            dump_env4(point_env4d(pos,pt), compute_env4(pos,pt,4));
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int cmpint(const void *i, const void *j)
-{
-    return *(int *)i - *(int *)j;
-}
-
-__INLINE__ void slist_sort(Slist l) {qsort(l+1,l[0],sizeof(Info),&cmpint);}
-
-void compute_block(Position *pos, Point pt, Slist stones, Slist libs, int nlibs)
-// Compute block at pt : list of stones and list of liberties
-// Return early when nlibs liberties are found
-{
-    Color color=point_color(pos, pt);
-    int   head=2, k, tail=1;
-    Point n;
-
-    mark_init(mark1); slist_clear(libs);
-    stones[1] = pt; mark(mark1, pt);
-    while(head>tail) {
-        pt = stones[tail++];
-        FORALL_NEIGHBORS(pos, pt, k, n)
-            if (!is_marked(mark1, n)) {
-                mark(mark1, n);
-                if (point_color(pos, n) == color)    stones[head++] = n;
-                else if (point_color(pos, n) == EMPTY) {
-                    slist_push(libs, n);
-                    if (slist_size(libs) >= nlibs) goto finished;
-                }
-            }
-    }
-finished:
-    slist_sort(libs);
-    stones[0] = head-1;
-    mark_release(mark1);
-}
-
-
-int check_block(Position *pos, Point pt)
-// return 1 if block at point pt is OK, else 0
-{
-    Block b=pos->block[pt];
-    char  str[8];
-    int   nerrs=0;
-    Point stones[BOARDSIZE], libs[BOARDSIZE];
-
-    // Check points where there is no stone
-    if (point_color(pos,pt) == OUT) {
-        if (point_block(pos, pt) == 0)
-            return 1;
-        else {
-            sprintf(buf,"Wrong block number %d at %s (which is OUT)", b,
-                                                        str_coord(pt, str));
-            log_fmt_s('E', buf, NULL);
-            return 0;
-        }
-    }
-    if (point_color(pos,pt) == EMPTY) {
-        if (point_block(pos, pt) == 0)
-            return 1;
-        else {
-            sprintf(buf,"Wrong block number %d at %s (which is EMPTY)", b,
-                                                        str_coord(pt, str));
-            log_fmt_s('E', buf, NULL);
-            return 0;
-        }
-    }
-
-    // Check point where there is a stone
-    if (point_block(pos, pt) == 0) {
-        sprintf(buf,"Wrong block number %d at %s (which is NOT EMPTY)", b,
-                                                           str_coord(pt, str));
-        log_fmt_s('E', buf, NULL);
-        if(nerrs++ > 10) return 0;
-    }
-    compute_block(pos, pt, stones, libs, 256);
-
-    // Global verification
-    if (block_size(pos,b) != slist_size(stones)) {
-        if (slist_size(stones)>255 && block_size(pos,b)==255) goto next_check;
-        sprintf(buf,"Wrong size of block %d at %s (%d instead of %d)",
-                b, str_coord(pt, str), pos->size[b], slist_size(stones));
-        log_fmt_s('E', buf, NULL);
-        if(nerrs++ > 10) return 0;
-    }
-next_check:
-    if (block_nlibs(pos,b) != slist_size(libs)) {
-        sprintf(buf,"Wrong nlibs of block %d at %s (%d instead of %d)",
-                b, str_coord(pt, str), block_nlibs(pos,b), slist_size(libs));
-        log_fmt_s('E', buf, NULL);
-        if(nerrs++ > 10) return 0;
-    }
-    if (block_nlibs(pos,b) ==0) {
-        sprintf(buf,"Error block %d(%s) with 0 liberty", b, str_coord(pt, str));
-        log_fmt_s('E', buf, NULL);
-        if(nerrs++ > 10) return 0;
-    }
-
-    // Detailed check of stones
-    b = point_block(pos,pt);
-    FORALL_IN_SLIST(stones, i) {
-        if (point_block(pos,i) != b) {
-            sprintf(buf,"Invalid block id (%d) at point %s ",
-                    point_block(pos,i), str_coord(i, str));
-            log_fmt_s('E', buf, NULL);
-            if(nerrs++ > 10) return 0;
-        }
-    }
-
-    // Detailed check of liberties
-    FORALL_IN_SLIST(libs, l) {
-        int k = (l-N)>>5, r = (l-N)&31;
-        if ((pos->libs[b][k] & (1<<r)) == 0) {
-            char str1[8];
-            sprintf(buf,"Liberty %s not set for block %d(%s) ",
-                                  str_coord(l, str), b, str_coord(pt, str1));
-            log_fmt_s('E', buf, NULL);
-            if(nerrs++ > 10) return 0;
-        }
-    }
-
-    return nerrs==0;    // OK if nerrs == 0
-}
-
-int blocks_OK(Position *pos, Point pt)
-// Return 1 (True) if block at point pt and blocks in contact with pt are OK
-{
-    Block b=pos->block[pt];
-    int   k;
-    Point n;
-    if (check_block(pos, pt)==0) return 0;
-
-    FORALL_NEIGHBORS(pos, pt, k, n)
-        if (pos->block[n] != b && check_block(pos, n)==0) return 0;
-    return 1;               // if all tests succeed blocks around pt are OK
-}
 
 //============================= debug subcommands =============================
 
@@ -272,26 +55,39 @@ void print_marker(Position *pos, Mark *marker)
     print_pos(&pos2, stdout, 0);
 }
 
-char* debug(Position *pos) 
+char* debug(Game *game)
+// Analyse the subcommands of the gtp debug command
 {
     char *command = strtok(NULL," \t\n"), *ret="";
     char *known_commands = "\nblocks_OK\nenv8\nfix_atari\ngen_playout\n"
-        "ko\nmatch_pat3\nmatch_pat\nplayout\nprint_mark\nsavepos\nsetpos\n";
-    int  amaf_map[BOARDSIZE], owner_map[BOARDSIZE];
+        "match_pat3\nmatch_pat\nplayout\nprint_mark\nsavepos\nsetpos\n"
+        "to_play";
+    int  *amaf_map=michi_calloc(BOARDSIZE, sizeof(int)); 
+    int  *owner_map=michi_calloc(BOARDSIZE, sizeof(int));
+    int  *score_count=michi_calloc(2*N*N+1, sizeof(int));
     Info sizes[BOARDSIZE];
     Point moves[BOARDSIZE];
+    Position *pos = game->pos;
 
     if (strcmp(command, "setpos") == 0) {
         char *str = strtok(NULL, " \t\n");
         while (str != NULL) {
+            Info m=-1;
             Point pt = parse_coord(str);
-            if (point_color(pos,pt) == EMPTY)
+            if (point_color(pos, pt) == EMPTY) {
                 ret = play_move(pos, pt);        // suppose alternate play
-            else if (pt == PASS_MOVE)
+                m = pt + (board_captured_neighbors(pos) << 9) 
+                       + (board_ko_old(pos) << 13);
+            }
+            else if (pt == PASS_MOVE) {
                 ret = pass_move(pos);
+                m = pt;
+            }
             else
                 ret ="Error Illegal move: point not EMPTY\n";
             str = strtok(NULL, " \t\n");
+            if (m != -1)
+                slist_push(game->moves, m);
         }
     }
     else if (strcmp(command, "savepos") == 0) {
@@ -302,7 +98,8 @@ char* debug(Position *pos)
         ret = "";
     }
     else if (strcmp(command, "playout") == 0) {
-        mcplayout(pos, amaf_map, owner_map, 1);
+        memset(score_count, 0, (2*N*N+1)*sizeof(int));
+        mcplayout(pos, amaf_map, owner_map, score_count, 1);
     }
     else if (strcmp(command, "blocks_OK") == 0) {
         char *str = strtok(NULL, " \t\n");
@@ -324,13 +121,6 @@ char* debug(Position *pos)
             block_compute_libs(pos, b, libs, BOARDSIZE);
             ret = slist_str_as_point(libs);
         }
-    }
-    else if (strcmp(command, "ko") == 0) {
-        if (pos->ko)
-            str_coord(pos->ko, buf);
-        else
-            buf[0] = 0;
-        ret = buf;
     }
     else if (strcmp(command, "gen_playout") == 0) {
         char *suggestion = strtok(NULL, " \t\n");
@@ -364,12 +154,14 @@ char* debug(Position *pos)
     else if (strcmp(command, "fix_atari") == 0) {
         int is_atari;
         char *str = strtok(NULL, " \t\n");
-        if (str == NULL)
-            return ret = "Error -- point missing";
+        if (str == NULL) {
+            ret = "Error -- point missing";
+            goto finished;
+        }
         Point pt = parse_coord(str);
         if (!point_is_stone(pos,pt)) {
             ret ="Error given point not occupied by a stone";
-            return ret;
+            goto finished;
         }
         is_atari = fix_atari(pos,pt, SINGLEPT_NOK, TWOLIBS_TEST,0,moves, sizes);
         ret = slist_str_as_point(moves);
@@ -385,9 +177,31 @@ char* debug(Position *pos)
         if(str == NULL) ret = "Error missing point";
         else {
             Point pt = parse_coord(str);
-            int env8=(pos->env4d[pt]<<8) + pos->env4[pt];
+            int env8 = point_env8(pos, pt);
             print_env8(env8);
         }
+    }
+    else if (strcmp(command, "pos") == 0) {
+        char *str = strtok(NULL, " \t\n");
+        if (strcmp(str, "last") == 0)
+            str_coord(board_last_move(pos), buf);
+        else if (strcmp(str, "last2") == 0)
+            str_coord(board_last2(pos), buf);
+        else if (strcmp(str, "last3") == 0)
+            str_coord(board_last3(pos), buf);
+        else if (strcmp(str, "ko") == 0) {
+           if (board_ko(pos))
+              str_coord(board_ko(pos), buf);
+           else
+              buf[0] = 0;
+        }
+        else if (strcmp(str, "to_play") == 0) {
+            if (board_color_to_play(pos) == BLACK)
+                sprintf(buf, "BLACK");
+            else 
+                sprintf(buf, "WHITE");
+        }
+        ret = buf;
     }
     else if (strcmp(command, "print_mark") == 0) {
         char *str = strtok(NULL, " \t\n");
@@ -403,6 +217,7 @@ char* debug(Position *pos)
         sprintf(buf, "unknown debug subcommand - %s", command);
         ret = buf;
     }
-        
+finished:    
+    free(amaf_map); free(score_count); free(owner_map);
     return ret;
 }

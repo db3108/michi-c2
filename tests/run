@@ -5,4 +5,5 @@ export REG=$HOME/prg/go/gogui-1.4.9/bin/gogui-regress
 $REG "./michi gtp" -output tests/output $1 tests/fix_atari.tst 
 $REG "./michi gtp" -output tests/output $1 tests/large_pat.tst 
 $REG "./michi gtp" -output tests/output $1 tests/board.tst 
+$REG "./michi gtp" -output tests/output $1 tests/undo.tst 
 

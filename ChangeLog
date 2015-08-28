@@ -2,12 +2,34 @@
 -- ChangeLog for the michi-c program
 ------------------------------------
 
+1.4 Released August, 28 2015
+- read simple sgf files (no variations)
+- live gfx (specific for gogui)
+- early passing
+- specific version of random_int for 32 bits system (seems useful for windows)
+- use specifed color in play and genmove commands
+- preliminary (basic) version of dynamic komi
+- better modularization of the code
+- histogram of playout scores
+- new gtp commands for visualisation of the search results with gogui 
+    owner_map, principal_variation, best_moves, visit_count
+- new gtp commands
+    undo, final_score, final_status_list, kgs-genmove_cleanup, set_free_handicap
+	gogui-setup, gogui-setup_player, gg-undo
+- variable boardsize
+- works with limited stack size (512 K bytes OK)
+- better usage of memory
+- speed improvements
+- add a minimal documentation of the program structure 
+- bugs corrections
+
 1.3 Released June, 14 2015 (to play on CGOS)
 - time management (sudden death only) : partial implementation of Pachi method
 - option to play until the end
 - move the functions dedicated to user interface in ui.c
 - simplify command line interface (backward compatible)
-- add configuration file (gtp commands)
+- parameters modifiable by gtp commands
+- add configuration file (gtp commands) 
 - add control of verbosity
 - cleanup the gtp loop
 - example files to play on CGOS

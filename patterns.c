@@ -43,10 +43,6 @@
 // are stored as arrays in the struct Position and are incrementally updated by
 // the routines that modify the board put_stone() and remove_stone()
 //
-// Note: as the patterns are symetrical wrt to the color, we do not care to 
-//       reverse the color in env4 and env4d after each move. The env4[] and 
-//       env4d[] are defined in terms of BLACK and WHITE rather than 'X' or 'x' 
-//
 Byte bit[8]={1,2,4,8,16,32,64,128};
 Byte pat3set[8192];     // Set of the pat3 patterns (defined in pat3src below)
 int  npat3;             // Number of patterns in pat3src
@@ -260,6 +256,8 @@ void pat_enumerate(char *src)
 }
 
 void make_pat3set(void)
+// Build the pat3set set (bitfield of 65536 bits). 
+// See explanations at top of the file
 {
     npat3 = sizeof(pat3src) / 10 - 1;
     if (npat3 > 13) {
@@ -353,11 +351,8 @@ LargePat *patterns;
 float    *probs;
 long     nsearchs=0;
 long     nsuccess=0;
-double   sum_len_success=0;
-double   sum_len_failure=0;
-
-char large_board[LARGE_BOARDSIZE];
-int  large_coord[BOARDSIZE]; // coord in the large board of any points of board
+double   sum_len_success=0.0;
+double   sum_len_failure=0.0;
 
 // Code: ------ Dictionnary of patterns (hastable with internal chaining) -----
 void print_pattern(const char *msg, int i, LargePat p)
@@ -375,10 +370,11 @@ void dump_patterns()
 }
 
 int find_pat(unsigned long key)
+// Return the slot where key is found or the empty slot where key should go 
 {
     assert(key!=0);
 
-    int h = (key>>20) & KMASK, h2=primes[(key>>(20+KSIZE)) & 15], len=0;
+    int h = (key>>20) & KMASK, h2=primes[(key>>(20+KSIZE)) & 15], len=1;
     nsearchs++;
     while (patterns[h].key != key) {
         len++;
@@ -394,6 +390,7 @@ int find_pat(unsigned long key)
 }
 
 int insert_pat(LargePat p)
+// Insert a pattern in the hash table. Return FOUND if the pattern is already in
 {
     int i = find_pat(p.key);
     if (patterns[i].key==0) {
@@ -431,7 +428,9 @@ void init_zobrist_hashdata(void)
     }
 }
   
-unsigned long zobrist_hash(char *pat) {
+unsigned long zobrist_hash(char *pat)
+// Return the Zobrist signature of a large pattern provided as ASCII string
+{
     int l = (int)strlen(pat);
     unsigned long k=0;
     for (int i=0 ; i<l ; i++) {
@@ -531,6 +530,7 @@ void permute(int permutation[8][141],int i,char strpat[256],char strperm[256])
 
 // Code: -------------------- load pattern definitions ------------------------
 void load_prob_file(FILE *f)
+// Load the probabilities of large patterns
 {
     float prob;
     int   id,t1,t2;
@@ -543,6 +543,7 @@ void load_prob_file(FILE *f)
 }
 
 int load_spat_file(FILE *f)
+// Load the spatial description of large patterns
 {
     int  d, id, idmax=-1, len, lenmax=0, npats=0;
     char strpat[256], strperm[256];
@@ -580,89 +581,26 @@ int load_spat_file(FILE *f)
     return npats;
 }
 
-// Code: --------------------------- Large Board ------------------------------
-// Large board with border of width 7 (to easily compute neighborhood of points)
-
-void compute_large_coord(void)
-// Compute the position in the large board of any point on the board
-{
-    int lpt, pt;
-    for (int y=0 ; y<N ; y++)
-       for (int x=0 ; x<N ; x++) {
-           pt  = (y+1)*(N+1) + x+1;
-           lpt = (y+7)*(N+7) + x+7;
-           large_coord[pt] = lpt;
-       }
-}
-
-void init_large_board(void)
-{
-    memset(large_board, '#', LARGE_BOARDSIZE);
-    compute_large_coord();
-}
-
-int large_board_OK(Position *pos)
-{
-    char large_board_color[4];
-    if (pos->to_play == BLACK) {
-        large_board_color[EMPTY] = '.';
-        large_board_color[OUT]   = '#';
-        large_board_color[WHITE] = 'x';
-        large_board_color[BLACK] = 'X';
-    }
-    else {
-        large_board_color[EMPTY] = '.';
-        large_board_color[OUT]   = '#';
-        large_board_color[WHITE] = 'X';
-        large_board_color[BLACK] = 'x';
-    }
-
-    FORALL_POINTS(pos,pt) {
-        if (point_color(pos,pt) == OUT) continue;
-        if (large_board_color[point_color(pos,pt)] != large_board[large_coord[pt]])
-            return 0;
-    }
-    return 1;
-}
-
-void print_large_board(FILE *f)
-// Print visualization of the current large board position
-{
-    int k=0;
-    fprintf(f,"\n\n");
-    for (int row=0 ; row<N+14 ; row++) {
-        for (int col=0 ; col<N+7 ; col++,k++) fprintf(f, "%c ", large_board[k]);
-        fprintf(f,"\n");
-    }
-    fprintf(f,"\n\n");
-}
-
-void copy_to_large_board(Position *pos)
-// Copy the current position to the large board
-{
-    char large_board_color[4];
-    int lpt=(N+7)*7+7, pt=(N+1)+1;
-    if (pos->to_play == BLACK) {
-        large_board_color[EMPTY] = '.';
-        large_board_color[OUT]   = '#';
-        large_board_color[WHITE] = 'x';
-        large_board_color[BLACK] = 'X';
-    }
-    else {
-        large_board_color[EMPTY] = '.';
-        large_board_color[OUT]   = '#';
-        large_board_color[WHITE] = 'X';
-        large_board_color[BLACK] = 'x';
-    }
-    for (int y=0 ; y<N ; y++, lpt+=7, pt++)
-       for (int x=0 ; x<N ; x++)
-           large_board[lpt++] = large_board_color[point_color(pos, pt++)];
-    assert(large_board_OK(pos));
-}
-
 // Code: ------------------------- Public functions ---------------------------
+void log_hashtable_synthesis() 
+{
+    double nkeys=0;
+    if (!large_patterns_loaded) return;
+    for (int i=0 ; i<LENGTH ; i++) 
+        if(patterns[i].key != 0) nkeys +=1.0;
+    sprintf(buf,"hashtable entries: %.0lf (fill ratio: %.1lf %%)", nkeys,
+                                             100.0 * nkeys / LENGTH);
+    log_fmt_s('I', buf, NULL);
+    sprintf(buf,"%ld searches, %ld success (%.1lf %%)", nsearchs, nsuccess,
+                                        100.0 * (double) nsuccess / nsearchs);
+    log_fmt_s('I', buf, NULL);
+    sprintf(buf,"average length of searchs -- success: %.1lf, failure: %.1lf",
+            sum_len_success/nsuccess, sum_len_failure/(nsearchs-nsuccess));
+    log_fmt_s('I', buf, NULL);
+}
+
 void init_large_patterns(const char *prob, const char *spat)
-// Initialize all this stuff
+// Initialize all the data necessary to use large patterns 
 {
     FILE *fspat, *fprob;    // Files containing large patterns
 
@@ -704,6 +642,12 @@ void init_large_patterns(const char *prob, const char *spat)
     sum_len_success=sum_len_failure=0.0;
 }
 
+void free_large_patterns(void)
+{
+    free(probs);
+    free(patterns);
+}
+
 double large_pattern_probability(Point pt)
 // return probability of large-scale pattern at coordinate pt. 
 // Multiple progressively wider patterns may match a single coordinate,
@@ -731,7 +675,7 @@ double large_pattern_probability(Point pt)
 }
 
 char* make_list_pat_matching(Point pt, int verbose)
-// Build the list of patterns that match at the point pt
+// Build the list of large patterns that match at the point pt
 {
     unsigned long k=0;
     int i;
@@ -752,21 +696,4 @@ char* make_list_pat_matching(Point pt, int verbose)
         }
     }
     return buf;
-}
-
-void log_hashtable_synthesis() 
-{
-    double nkeys=0;
-    if (!large_patterns_loaded) return;
-    for (int i=0 ; i<LENGTH ; i++) 
-        if(patterns[i].key != 0) nkeys +=1.0;
-    sprintf(buf,"hashtable entries: %.0lf (fill ratio: %.1lf %%)", nkeys,
-                                             100.0 * nkeys / LENGTH);
-    log_fmt_s('I', buf, NULL);
-    sprintf(buf,"%ld searches, %ld success (%.1lf %%)", nsearchs, nsuccess,
-                                        100.0 * (double) nsuccess / nsearchs);
-    log_fmt_s('I', buf, NULL);
-    sprintf(buf,"average length of searchs -- success: %.1lf, failure: %.1lf",
-            sum_len_success/nsuccess, sum_len_failure/(nsearchs-nsuccess));
-    log_fmt_s('I', buf, NULL);
 }

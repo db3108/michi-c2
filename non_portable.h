@@ -20,6 +20,25 @@
     #define __INLINE__ static __inline
 #endif
 
+// Random Number generator (32 bits Linear Congruential Generator)
+// Ref: Numerical Recipes in C (W.H. Press & al), 2nd Ed page 284
+extern unsigned int idum;
+__INLINE__ unsigned int qdrandom(void) {idum=(1664525*idum)+1013904223; return idum;}
+#ifndef MICHI_M32
+__INLINE__ unsigned int random_int(int n) /* random int between 0 and n-1 */ \
+           {unsigned long r=qdrandom(); return (r*n)>>32;}
+#else
+// The above version seems not to work with Microsoft Studio on 32 bits systems 
+__INLINE__ unsigned int random_int(int n) /* random int between 0 and n-1 */
+{
+    static double i2_32 = 1.0/(((double)(1<<16))*((double)(1<<16)));
+    unsigned int r=qdrandom();
+    double t = r*i2_32;
+    r = t*n;
+    return r;
+}
+#endif
+
 // ------------------------- Portable definitions -----------------------------
 // of the efficient operations coded below for some (compiler/processor).
 #ifdef PORTABLE

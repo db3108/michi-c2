@@ -1,7 +1,8 @@
 // params.c -- Variable parameters used by the michi program
 #include "michi.h"
-static char buf[2048];
-// ----------------- Initial Values for playouts parameters -------------------
+static char buf[4096];
+static int  raw;
+// ----------------- Initial Values for Tree Policy parameters ----------------
 int   N_SIMS             = 2000;
 int   RAVE_EQUIV         = 3500;
 int   EXPAND_VISITS      = 8;
@@ -14,31 +15,90 @@ int   PRIOR_LARGEPATTERN = 100;  // most moves have relatively small probability
 int   PRIOR_CFG[]        =     {24, 22, 8};
 int   LEN_PRIOR_CFG      = (sizeof(PRIOR_CFG)/sizeof(int));
 int   PRIOR_EMPTYAREA    = 10;
+// --------------- Initial Values for Random Policy parameters-- --------------
 double PROB_HEURISTIC_CAPTURE = 0.9;   // probability of heuristic suggestions
 double PROB_HEURISTIC_PAT3    = 0.95;  // being taken in playout
 double PROB_SSAREJECT = 0.9;// prob of rejecting suggested self-atari in playout
 double PROB_RSAREJECT = 0.5;// prob of rejecting random self-atari in playout
                            // this is lower than above to allow nakade
 // ----------------- Initial Values for general parameters --------------------
-int   play_until_the_end = 0;
-int   random_seed        = 1;
-int   REPORT_PERIOD      = 200;
-int   verbosity          = 2;
+int    use_dynamic_komi        = 0;
+double komi_per_handicap_stone = 7.0;
+int    play_until_the_end      = 0;
+int    random_seed             = 1;
+int    REPORT_PERIOD           = 200000;
+int    verbosity               = 2;
 double FASTPLAY20_THRES= 0.8;//if at 20% playouts winrate is >this, stop reading
 double FASTPLAY5_THRES = 0.95;//if at 5% playouts winrate is >this, stop reading
-double RESIGN_THRES     = 0.2;
+double RESIGN_THRES            = 0.2;
+char   Live_gfx[80]            = "None";
+int    Live_gfx_interval       = 1000;
 
 unsigned int idum        = 1;
 //==================================== Code ===================================
+int pk_line;
+char *margin[] = {
+      "        ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+    "          ",
+};
+#define PRINT_KEY_VALUE(p, fmt) \
+    if (raw) \
+        sprintf(key_value, "%30s " #fmt "\n", #p, p); \
+    else \
+        sprintf(key_value, "%s %30s " #fmt "\n", margin[pk_line], #p, p); \
+    strcat(buf, key_value); \
+    pk_line++;
+   
+#define PRINT_BOOL_KEY_VALUE(p, fmt) \
+    if (raw) \
+        sprintf(key_value, "%30s " #fmt "\n", #p, p); \
+    else \
+        sprintf(key_value, "%s[bool] %30s " #fmt "\n", margin[pk_line], #p, p); \
+    strcat(buf, key_value); \
+    pk_line++;
+   
+#define PRINT_LIST_KEY_VALUE(list, p, fmt) \
+    if (raw) \
+        sprintf(key_value, "%30s " #fmt "\n", #p, p); \
+    else \
+        sprintf(key_value, "%s %s " #fmt "\n", list, #p, p); \
+    strcat(buf, key_value); \
+    pk_line++;
 
-#define PRINT_KEY_VALUE(p, fmt) sprintf(key_value, "%30s " #fmt "\n", #p, p); \
-                                strcat(buf, key_value);
 #define READ_VALUE(p, fmt) {                                                  \
     char *value = strtok(NULL," \t\n");                                       \
     if (value == NULL)                                                        \
         ret = "Error! No value";                                              \
     else {                                                                    \
         sscanf(value, #fmt, &p);                                              \
+        ret = "";                                                             \
+    }                                                                         \
+}
+
+#define READ_VALUE_STRING(p, fmt) {                                           \
+    char *value = strtok(NULL," \t\n");                                       \
+    if (value == NULL)                                                        \
+        ret = "Error! No value";                                              \
+    else {                                                                    \
+        sscanf(value, #fmt, p);                                               \
         ret = "";                                                             \
     }                                                                         \
 }
@@ -51,6 +111,7 @@ char* param_playout()
         "PROB_REJECT_SELF_ATARI_RANDOM\nPROB_REJECT_SELF_ATARI_SUGGESTED\n";
 
     if (param == NULL) {    // List current values
+        pk_line = 0;
         buf[0] = 0;
         PRINT_KEY_VALUE(PROB_HEURISTIC_CAPTURE, %.2f);
         PRINT_KEY_VALUE(PROB_HEURISTIC_PAT3, %.2f);
@@ -82,6 +143,7 @@ char* param_tree(void)
         "PRIOR_CFG[2]\nPRIOR_EMPTYAREA\n";
 
     if (param == NULL) {    // List current values
+        pk_line = 0;
         buf[0] = 0;
         PRINT_KEY_VALUE(N_SIMS, %d);
         PRINT_KEY_VALUE(RAVE_EQUIV, %d);
@@ -148,19 +210,32 @@ unsigned int true_random_seed(void)
 char* param_general(void) 
 // Implement gtp command that list or modify general parameters
 {
-    char *param = strtok(NULL," \t\n"), *ret=buf, key_value[80];
-    char *known_params = "\nverbosity\nREPORT_PERIOD\nRESIGN_THRES\n"
+    char *param = strtok(NULL," \t\n"), *ret=buf, key_value[800];
+    char *known_params = "play_until_the_end\nuse_dynamic_komi\nverbosity\n"
+                         "komi_per_handicap_stone\n"
+                         "REPORT_PERIOD\nRESIGN_THRES\n"
                          "FASTPLAY20_THRES\nFASTPLAY5_THRES\n";
 
     if (param == NULL) {    // List current values
+        pk_line = 0;
         buf[0] = 0;
-        PRINT_KEY_VALUE(play_until_the_end, %d);
+        margin[0] = "  ";
+        margin[2] = "    ";
+        PRINT_BOOL_KEY_VALUE(use_dynamic_komi, %d);
+        PRINT_KEY_VALUE(komi_per_handicap_stone, %.1lf);
+        PRINT_BOOL_KEY_VALUE(play_until_the_end, %d);
         PRINT_KEY_VALUE(random_seed, %d);
         PRINT_KEY_VALUE(REPORT_PERIOD, %d);
         PRINT_KEY_VALUE(verbosity, %d);
         PRINT_KEY_VALUE(RESIGN_THRES, %.2f);
         PRINT_KEY_VALUE(FASTPLAY20_THRES, %.2f);
         PRINT_KEY_VALUE(FASTPLAY5_THRES, %.2f);
+        PRINT_LIST_KEY_VALUE("[list/None/best_moves/owner_map/"
+                                   "principal_variation/visit_count]",
+                                   Live_gfx, %s);
+        PRINT_KEY_VALUE(Live_gfx_interval, %d);
+        margin[0] = "        ";
+        margin[2] = "          ";
     }
     else if (strcmp(param, "help") == 0)
         ret = known_params;
@@ -168,6 +243,8 @@ char* param_general(void)
         ret = known_params;
     else if (strcmp(param, "play_until_the_end") == 0)
         READ_VALUE(play_until_the_end, %d)
+    else if (strcmp(param, "use_dynamic_komi") == 0)
+        READ_VALUE(use_dynamic_komi, %d)
     else if (strcmp(param, "random_seed") == 0) {
         READ_VALUE(random_seed, %d)
         if (random_seed == 0)
@@ -185,5 +262,27 @@ char* param_general(void)
         READ_VALUE(FASTPLAY20_THRES, %lf)
     else if (strcmp(param, "FASTPLAY5_THRES") == 0)
         READ_VALUE(FASTPLAY5_THRES, %lf)
+    else if (strcmp(param, "Live_gfx") == 0)
+        READ_VALUE_STRING(Live_gfx, %s)
+    else if (strcmp(param, "Live_gfx_interval") == 0)
+        READ_VALUE(Live_gfx_interval, %d)
     return ret;
+}
+
+void params_fprint(FILE *f, const char *cmd) 
+{
+    char *str = strtok(buf,"\n");
+    while (str != NULL) {
+        fprintf(f, "%-15s %s\n", cmd, str);
+        str = strtok(NULL,"\n");
+    }
+}
+
+void make_params_default(FILE *f)
+{
+    raw = 1;
+    param_general(); params_fprint(f, "param_general");
+    param_tree();    params_fprint(f, "param_tree");
+    param_playout(); params_fprint(f, "param_playout");
+    raw = 0;
 }

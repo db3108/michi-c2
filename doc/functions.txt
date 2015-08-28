@@ -1,0 +1,105 @@
+best_move --
+better_to_pass -- check if it is better to pass than to continue
+block_add_lib -- Add liberty l to block b
+block_capture -- Remove block b from the board -> number of captured stones 
+block_clear_libs -- Delete all liberties from block b
+block_compute_libs -- Return the list of Block b libs
+block_count_libs -- Return the number of liberties of block b
+block_merge -- Merge 2 blocks. If b1==b2 nothing to do (this is not an error)
+block_remove_lib -- Remove liberty l of block b (call block_capture if needed)
+block_remove_lib_extend -- Remove liberty l of block b (no capture is possible)
+blocks_OK -- Return 1 if block at point pt and blocks in contact with pt are OK
+choose_capture_move -- Replace sequence gen_playout_capture_moves+choose_from
+choose_from -- Choose a move randomly from the list moves[]
+choose_random_move -- Replace sequence gen_playout_moves_random; choose_from
+collect_infos -- Collect infos for the time management
+compute_all_status -- Compute status of points and blocks (based on owner_map)
+compute_code -- Compute a 16 bits code (env8) that defines the 8 neighbors
+copy_to_large_board -- Copy the current position to the large board
+debug -- Analyse the subcommands of the gtp debug command
+do_play -- Play the move (updating the Game struct)
+empty_position -- Reset pos to an initial empty board position
+final_score -- Compute the score of a terminated game: score > 0.0 if BLACK wins
+final_status_list -- Compute the status of all points (from owner_map)
+find_pat -- Return the slot where key is found or the empty slot to put key in
+fix_atari -- An atari/capture analysis routine that checks the group at Point pt
+fix_atari_r -- Simplified version of fix_atari (used by read_ladder_attack)
+game_clear_board -- Clear the game struct
+free_tree -- Free memory allocated for the TreeNode struct
+free_game -- Free the memory allocated for the Game struct
+genmove -- compute the next supposed better move (do not play it)
+gen_playout_moves_capture -- Compute list of candidate next moves (capture)
+gen_playout_moves_pat3 -- Compute list of candidate next moves (pat3)
+gogui_analyse_commands -- Process the gtp command gogui-analyze_commands
+gogui_play_sequence -- Play a sequence of moves
+gogui_setup -- Setup a series of stones (board must be empty)
+gogui_setup_player -- Set the color of the next player (board must be empty)
+gtp_boardsize -- Set the board size to NxN and clear the board
+gtp_clear_board -- Clear the board
+gtp_cputime -- Play a stone of the given color at the given vertex
+gtp_final_score -- Compute the score of a finished game
+gtp_final_status_list -- Report vertices with a specific final status in a finished game
+gtp_genmove -- Generate and play the supposedly best move for either color
+gtp_gg_undo -- Undo a number of moves
+gtp_io -- Loop that process the gtp commands send by the controller
+gtp_komi -- Set the komi
+gtp_owner_map -- Generate probability of ownership for all vertices
+gtp_play -- Play a stone of the given color at the given vertex
+gtp_set_free_handicap -- Put free placement handicap stones and put them on the board
+gtp_time_left -- Report remaining time
+gtp_time_settings -- Set time allowance
+gtp_undo -- Undo one move
+init_large_board -- Initialize large board (i.e. board with a 7 point border)
+init_large_patterns -- Initialize all the data necessary to use large patterns
+insert_pat -- Insert a pattern in the hash table
+is_eye -- Test if pt is an eye and return its color or 0 if it is not
+is_game_board_empty -- return 1 (true) if the board is empty (no handicap ...)
+line_height -- Return the line number above nearest board edge (0 based)
+loadsgf -- Load a position from the given SGF file 
+load_prob_file -- Load the probabilities of large patterns
+load_spat_file -- Load the spatial description of large patterns
+make_list_last_moves_neighbors -- Make a randomly shuffled list of points
+make_list_neighbor_blocks_in_atari -- Make a list of blocks in atari in contact with block b
+make_list_pat_matching -- Build the list of large patterns that match at the point pt
+make_pat3set -- Build the pat3set set (bitfield of 65536 bits) (see patterns.c)
+mcbenchmark -- Run n Monte-Carlo playouts from empty position, return average score
+mcplayout -- Start a Monte Carlo playout from a given position, return score for to-play
+mcts_point_status -- Status of points: OWN_BY_BLACK, OWN_BY_WHITE or UNKNOWN 
+michi_console -- main() of michi
+most_urgent -- Return the most urgent child to play
+new_blkid -- Generate a new block id (i.e. one that is not already in use)
+new_game -- Build a new game struct (allocate memory)
+new_tree_node -- Build a new tree node initialized with prior EVEN
+nsims -- Compute the number of simulations for the next tree_search
+param_general -- Implement gtp command that list or modify general parameters
+param_playout -- Implement gtp command that list or modify parameters of the playout policy
+param_tree -- Implement gtp command that list or modify parameters of the tree policy
+pass_move -- Play a Pass move in the current position
+pat3_match -- Return 1 if a 3x3 pattern match at point pt, else 0
+play_move -- Play a move at point pt (not a Pass move). No change of pos if move is illegal
+point_create_block -- Create a new block at point pt (assumed EMPTY)
+print_pos -- 
+put_stone -- Put a stone at point pt. Update env4 and env4d neighbor data
+random_int -- Print visualization (ASCII) of the given board position
+read_ladder_attack -- Check if a capturable ladder is being pulled out at pt
+remove_stone -- Remove a stone at point pt. Update env4 and env4d neighbor data
+score -- compute score for to-play player (assume game played by mcplayout)
+select_black -- Compute a 4 bits code with bit set to 1 for each BLACK neighbor
+select_empty -- Compute a 4 bits code with bit set to 1 for each EMPTY neighbor
+select_white -- Compute a 4 bits code with bit set to 1 for each WHITE neighbor
+slist_clear -- Make the list empty
+slist_insert -- Insert one element into the list if it is not already in
+slist_push -- Push one element on the top of the list (can be a dupplicate)
+slist_shuffle -- Random shuffle the list
+slist_size -- Return the size of the list
+slist_sort -- Sort the list in increasing order
+slist_str_as_int -- ASCII String with the elements of the list considered as integers
+slist_str_as_point -- ASCII String with the elements of the list considered as Points
+tree_descend -- Descend through the tree to a leaf
+tree_search -- Perform MCTS search from a given position for a given number of iterations
+tree_update -- Store simulation result in the tree (nodes is the tree path)
+try_search_again -- Check if the situation is clear enough after the first tree search
+undo_move -- Undo the last move. WARNING CAN ONLY UNDO ONE MOVE 
+update_blocks -- Update the blocks if a move is done at point pt. No change if move is illegal
+winrate -- Return the winrate (number of wins divided by the number of visits)
+zobrist_hash -- Return the Zobrist signature of a large pattern provided as ASCII string
