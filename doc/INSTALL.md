@@ -19,3 +19,11 @@ will perform a few (quick) regression tests. The result should be a single line
 If you want a list of all the tests that are performed try
 
 $ make test_verbose
+
+One last important thing is to download the Michi large-scale pattern files 
+(patterns.prob.xz, patterns.spat.xz) that Petr Baudis provides at :
+
+http://pachi.or.cz/michi-pat/
+
+Unpack them and place them (or a link to them) in the working directory 
+where you run michi-c, otherwise it will be much weaker.

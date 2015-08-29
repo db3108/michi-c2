@@ -33,7 +33,7 @@ display of a board (and much more as we will see in the next section).
 So this manual is for you if you need information
 
 - on how to use michi-c with gogui (section 2)
-- on the behaviour of the gtp commands that are specific to michi-c (section 3)
+- on the behaviour of the gtp commands understood by michi-c (section 3)
 - the command line arguments (section 4)
 
 **References**
@@ -108,6 +108,15 @@ versions of the same program but with different parameter settings.
 in the Program menu).
 
 michi-c is now usable in gogui and you can begin to play with it.
+
+But before playing, I **strongly** recommend that you install the large patterns
+provided by Petr Baudis at http://pachi.or.cz/michi-pat/ (see INSTALL.md). 
+If you don't do this michi-c will be much weaker and playing experience will be
+much worse.
+**Once the files are unpacked, patterns.prob and patterns.spat must be 
+placed in the working directory** 
+(or make a link on them in the working directory).
+
 You play just by clicking on the intersection you want to play and as soon as
 you have played the program begins to "think" and will reply after a few
 seconds (the computer color has been set to white at initialization and can
@@ -123,8 +132,8 @@ be changed in the menu *Game*, see fig.4).
 
 **Troubleshooting** If you have not been as lucky as described in the above
 paragraphs, the best advice I could give is to verify that the *command* field
-is correct. On Linux or MacOS X the easy way is to try to execute this command 
-in a terminal.
+is correct. On Linux or MacOS X the easy way to do it is to try to execute 
+this command in a terminal.
 
 Then type **name** and the program should answer::
 
@@ -168,7 +177,7 @@ Any of the analyze commands can be run either by double clicking on it or by
 selecting a command and clicking on the *Run* button.
 It is also possible to have a command executed automatically after each move.
  
-The three first commands are for changing parameters that control the behavior
+The first three commands are for changing parameters that control the behavior
 of michi-c. They will be described in next subsection (2.4).
 
 The other commands give meaningful answer only just after michi-c has played 
@@ -179,7 +188,7 @@ its move.
     mark the stones estimated as dead by michi-c 
     (not always accurate as you will notice).
 
-*Best sequence*
+*Principal variation*
     shows the next 5 best continuation as estimated by mcts.
 
 .. figure:: img/img14.png
@@ -218,7 +227,8 @@ its move.
     represent the number of visits for each move in the root node of MCTS.
     The size of the square is maximum for the most visited move and the 
     surface of each square is proportional to the visit count (discretized by
-    step of 10 %, so 0%, 1%, .., 5% are the same, 6 %, 7%, ..., 14 % , etc.)
+    step of 10 %, so 0%, 1%, .., 5% are the same
+    , 6 %, 7%, ..., 15 % the same , etc.)
 
 .. figure:: img/img12.png
     :scale: 75 %
@@ -244,7 +254,7 @@ its move.
 -----------------
 
 All the graphics commands (marked with a gfx prefix in the *Analyze commands*
-windows) except *Histogram of scores*, can also be updated at regular intervals
+windows) can also be updated at regular intervals
 during the search providing an animation that can be fun to watch.
 
 This is done by setting the *Live gfx* and *Live gfx interval* parameters in
@@ -286,7 +296,8 @@ Definitions::
         when checked this option disallows early passing (useful on cgos)
 
     random_seed
-        random seed. -1 generate a true random seed that changes for each game
+        random seed. Should normally be a positive integer 
+        -1 generate a true random seed that will be different each time michi-c is restarted
 
     REPORT_PERIOD
         number of playouts between each report by michi on the standard output
@@ -326,11 +337,10 @@ Definitions::
 
     N_SIMS
         Number of simulations per move (search).
-        Note: this value can be modified when playing with time limited constraints        
+        Note: michi-c use a different value when playing with time limited constraints        
 
     RAVE_EQUIV
-        number of visits which makes the weight of RAVE simulations and real 
-        simulations equal
+        number of visits which makes the weight of RAVE simulations and real simulations equal
 
     EXPAND_VISITS
         number of visits before a node is expanded
@@ -358,7 +368,9 @@ Definitions::
         prior for moves in cfg distance 1, 2, 3
 
     PRIOR_EMPTYAREA
-        prior for moves in empty area
+        prior for moves in empty area.
+        Negative for move on the first and second lines
+        Positive for move on the third and fourth lines
 
 
 .. figure:: img/img10.png
@@ -389,7 +401,7 @@ Definitions::
 ************************************
 
 The list of all gtp commands understood by michi-c (version 1.4) is
-described in the following sections
+described in the following sections.
 
 3.1 Standard gtp commands
 -------------------------
@@ -460,21 +472,21 @@ The names recognized by these commands are those described in section 2.4.
 *param_general*::
 
     Function:  Read or write internal parameters of michi-c (General)
-    Arguments: name of a parameter or none
+    Arguments: name value or nothing
     Fails:     No value (if only a name was given)
     Returns:   A string formatted for gogui analyze command of param type
 
 *param_playout*::
 
     Function:  Read or write internal parameters of michi-c (Playout Policy)
-    Arguments: name of a parameter or none
+    Arguments: name value or nothing
     Fails:     No value (if only a name was given)
     Returns:   A string formatted for gogui analyze command of param type
 
 *param_tree*::
 
     Function:  Read or write internal parameters of michi-c (Tree Policy)
-    Arguments: name of a parameter or none
+    Arguments: name value or nothing
     Fails:     No value (if only a name was given)
     Returns:   A string formatted for gogui analyze command of param type
 
@@ -492,7 +504,7 @@ The names recognized by these commands are those described in section 2.4.
 
 *cputime*
     This is a command used by the gogui tool gogui-twogtp.
-    It returns a time in second, whose origin is undefined.
+    It returns a time in seconds, whose origin is unspecified.
 
 *debug <subcmd>*
     This command is only used for debugging purpose and regression testing.

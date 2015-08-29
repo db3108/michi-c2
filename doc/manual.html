@@ -366,7 +366,7 @@ display of a board (and much more as we will see in the next section).</p>
 <p>So this manual is for you if you need information</p>
 <ul class="simple">
 <li>on how to use michi-c with gogui (section 2)</li>
-<li>on the behaviour of the gtp commands that are specific to michi-c (section 3)</li>
+<li>on the behaviour of the gtp commands understood by michi-c (section 3)</li>
 <li>the command line arguments (section 4)</li>
 </ul>
 <p><strong>References</strong></p>
@@ -424,8 +424,15 @@ which, by default is the name of the program. This can be useful to have many
 versions of the same program but with different parameter settings.
 (it is always possible to change it afterwards, using the &quot;Edit Program&quot; entry
 in the Program menu).</p>
-<p>michi-c is now usable in gogui and you can begin to play with it.
-You play just by clicking on the intersection you want to play and as soon as
+<p>michi-c is now usable in gogui and you can begin to play with it.</p>
+<p>But before playing, I <strong>strongly</strong> recommend that you install the large patterns
+provided by Petr Baudis at <a class="reference external" href="http://pachi.or.cz/michi-pat/">http://pachi.or.cz/michi-pat/</a> (see INSTALL.md).
+If you don't do this michi-c will be much weaker and playing experience will be
+much worse.
+<strong>Once the files are unpacked, patterns.prob and patterns.spat must be
+placed in the working directory</strong>
+(or make a link on them in the working directory).</p>
+<p>You play just by clicking on the intersection you want to play and as soon as
 you have played the program begins to &quot;think&quot; and will reply after a few
 seconds (the computer color has been set to white at initialization and can
 be changed in the menu <em>Game</em>, see fig.4).</p>
@@ -438,8 +445,8 @@ be changed in the menu <em>Game</em>, see fig.4).</p>
 </div>
 <p><strong>Troubleshooting</strong> If you have not been as lucky as described in the above
 paragraphs, the best advice I could give is to verify that the <em>command</em> field
-is correct. On Linux or MacOS X the easy way is to try to execute this command
-in a terminal.</p>
+is correct. On Linux or MacOS X the easy way to do it is to try to execute
+this command in a terminal.</p>
 <p>Then type <strong>name</strong> and the program should answer:</p>
 <pre class="literal-block">
 = michi-c
@@ -475,7 +482,7 @@ accessible in the <em>Analyze commands</em> window (as in fig6. below).</p>
 <p>Any of the analyze commands can be run either by double clicking on it or by
 selecting a command and clicking on the <em>Run</em> button.
 It is also possible to have a command executed automatically after each move.</p>
-<p>The three first commands are for changing parameters that control the behavior
+<p>The first three commands are for changing parameters that control the behavior
 of michi-c. They will be described in next subsection (2.4).</p>
 <p>The other commands give meaningful answer only just after michi-c has played
 its move.</p>
@@ -484,7 +491,7 @@ its move.</p>
 mark the stones estimated as dead by michi-c
 (not always accurate as you will notice).</blockquote>
 <dl class="docutils">
-<dt><em>Best sequence</em></dt>
+<dt><em>Principal variation</em></dt>
 <dd>shows the next 5 best continuation as estimated by mcts.</dd>
 </dl>
 <div class="figure align-center">
@@ -523,7 +530,8 @@ big white square = 100 % white possession, nothing = around 50 %)</dd>
 <dd>represent the number of visits for each move in the root node of MCTS.
 The size of the square is maximum for the most visited move and the
 surface of each square is proportional to the visit count (discretized by
-step of 10 %, so 0%, 1%, .., 5% are the same, 6 %, 7%, ..., 14 % , etc.)</dd>
+step of 10 %, so 0%, 1%, .., 5% are the same
+, 6 %, 7%, ..., 15 % the same , etc.)</dd>
 </dl>
 <div class="figure align-center">
 <img alt="img/img12.png" src="img/img12.png" style="width: 497.25px; height: 382.5px;" />
@@ -548,7 +556,7 @@ Should find a good way to show a beautiful python graphic in next version.</dd>
 <div class="section" id="live-graphics">
 <h2>2.3 Live graphics</h2>
 <p>All the graphics commands (marked with a gfx prefix in the <em>Analyze commands</em>
-windows) except <em>Histogram of scores</em>, can also be updated at regular intervals
+windows) can also be updated at regular intervals
 during the search providing an animation that can be fun to watch.</p>
 <p>This is done by setting the <em>Live gfx</em> and <em>Live gfx interval</em> parameters in
 the <em>General Parameters</em> setting window as seen on the figure 12 below.</p>
@@ -584,7 +592,8 @@ play_until_the_end
     when checked this option disallows early passing (useful on cgos)
 
 random_seed
-    random seed. -1 generate a true random seed that changes for each game
+    random seed. Should normally be a positive integer
+    -1 generate a true random seed that will be different each time michi-c is restarted
 
 REPORT_PERIOD
     number of playouts between each report by michi on the standard output
@@ -622,11 +631,10 @@ Live_gfx_interval
 <pre class="literal-block">
 N_SIMS
     Number of simulations per move (search).
-    Note: this value can be modified when playing with time limited constraints
+    Note: michi-c use a different value when playing with time limited constraints
 
 RAVE_EQUIV
-    number of visits which makes the weight of RAVE simulations and real
-    simulations equal
+    number of visits which makes the weight of RAVE simulations and real simulations equal
 
 EXPAND_VISITS
     number of visits before a node is expanded
@@ -654,7 +662,9 @@ PRIOR_CFG[]
     prior for moves in cfg distance 1, 2, 3
 
 PRIOR_EMPTYAREA
-    prior for moves in empty area
+    prior for moves in empty area.
+    Negative for move on the first and second lines
+    Positive for move on the third and fourth lines
 </pre>
 <div class="figure align-center">
 <img alt="img/img10.png" src="img/img10.png" style="width: 284.25px; height: 155.25px;" />
@@ -683,7 +693,7 @@ PROB_RSAREJECT (0.50)
 <div class="section" id="reference-of-michi-c-gtp-commands">
 <h1>3. Reference of michi-c gtp commands</h1>
 <p>The list of all gtp commands understood by michi-c (version 1.4) is
-described in the following sections</p>
+described in the following sections.</p>
 <div class="section" id="standard-gtp-commands">
 <h2>3.1 Standard gtp commands</h2>
 <p>The following standard gtp commands are implemented.
@@ -744,21 +754,21 @@ behaves as if it was called without argument.</p>
 <p><em>param_general</em>:</p>
 <pre class="literal-block">
 Function:  Read or write internal parameters of michi-c (General)
-Arguments: name of a parameter or none
+Arguments: name value or nothing
 Fails:     No value (if only a name was given)
 Returns:   A string formatted for gogui analyze command of param type
 </pre>
 <p><em>param_playout</em>:</p>
 <pre class="literal-block">
 Function:  Read or write internal parameters of michi-c (Playout Policy)
-Arguments: name of a parameter or none
+Arguments: name value or nothing
 Fails:     No value (if only a name was given)
 Returns:   A string formatted for gogui analyze command of param type
 </pre>
 <p><em>param_tree</em>:</p>
 <pre class="literal-block">
 Function:  Read or write internal parameters of michi-c (Tree Policy)
-Arguments: name of a parameter or none
+Arguments: name value or nothing
 Fails:     No value (if only a name was given)
 Returns:   A string formatted for gogui analyze command of param type
 </pre>
@@ -775,7 +785,7 @@ Returns:   A string formatted for gogui analyze command of pspair type
 <dl class="docutils">
 <dt><em>cputime</em></dt>
 <dd>This is a command used by the gogui tool gogui-twogtp.
-It returns a time in second, whose origin is undefined.</dd>
+It returns a time in seconds, whose origin is unspecified.</dd>
 <dt><em>debug &lt;subcmd&gt;</em></dt>
 <dd>This command is only used for debugging purpose and regression testing.
 People that need it are able to read the code and I believe it is not

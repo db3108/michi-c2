@@ -31,8 +31,17 @@ Usage
 -----
 
 See the user manual by opening doc/manual.html in any web browser.
+If you are browsing the code from GitHub you can preferably open the 
+doc/manual.rst.
 
 Install
 -------
 
 See doc/INSTALL.md
+
+*Important Note*  It is highly recommended that you download Michi 
+large-scale pattern files (patterns.prob, patterns.spat):
+
+http://pachi.or.cz/michi-pat/
+
+Unpack them and place them (or a link to them) in the working directory when you run michi-c (same as michi.py), otherwise michi-c will be much weaker.
