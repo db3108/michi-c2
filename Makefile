@@ -29,11 +29,14 @@ michi: $(OBJS) michi.h board.h
 %.o: %.c michi.h board.h
 	gcc $(GENCODE) $(CFLAGS) -c -std=gnu99 $< 
 
-test:
+test: all
 	tests/run
 
 test_verbose:
 	tests/run -long
+
+test_michi:
+	tests/run_michi
 
 valgrind: michi
 	valgrind --track-origins=yes ./michi tsdebug
@@ -49,4 +52,4 @@ clean:
 
 veryclean: clean
 	rm -f $(BIN)
-	rm -rf tests/output tests/michi.log michi.log
+	rm -rf tests/output tests/tst tests/michi.log michi.log

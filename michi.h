@@ -114,7 +114,7 @@ int    is_game_board_empty(Game *game);
 char*  do_play(Game *game, Color c, Point pt);
 char*  loadsgf(Game *game, char *filename, int nmoves);
 //---------------------------- Functions in ui.c ------------------------------
-void   display_live_gfx(int i, Position *pos, TreeNode *tree,
+void   display_live_gfx(Position *pos, TreeNode *tree,
                                                      int owner_map[BOARDSIZE]);
 //-------------------- Functions inlined for performance ----------------------
 __INLINE__ int  is_time_limited(Game *game) {return game->time_init >0;}

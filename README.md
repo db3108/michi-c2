@@ -19,28 +19,38 @@ Version 1.4 has many new features
 - plays handicap games with dynamic komi (linear)
 - some speed improvements
 
+*Near future*
+
+- version 1.4.1 will correct some bugs and add a few missing functions 
+  (Superko, writesgf)
+- version 1.4.2 will be a general cleanup bug fix release
+
 For more details see the ChangeLog.
 
-
 The current version is able to play on CGOS. A README file and example 
-configuration files can be found in the new cgos directory.
+configuration files can be found in the cgos directory.
 
 Michi-c2 is distributed under the MIT licence.  Now go forth, hack and peruse!
 
 Usage 
 -----
 
-See the user manual by opening doc/manual.html in any web browser.
-If you are browsing the code from GitHub you can preferably open the 
-doc/manual.rst.
+See the user manual by opening *doc/manual.html* in any web browser.
+If you are browsing the code on GitHub you can preferably open the 
+*doc/manual.rst*.
 
 Install
 -------
 
-See doc/INSTALL.md
+See *doc/INSTALL.md*
 
+This document describes some tests of michi-c that you should execute before 
+trying to use it. These tests will check if you get the same results on your 
+computer as I got on Linux. When these tests pass, we could be fairly confident
+that michi-c will work for you.
+  
 *Important Note*  It is highly recommended that you download Michi 
-large-scale pattern files (patterns.prob, patterns.spat):
+large-scale pattern files provide by Petr Baudis at
 
 http://pachi.or.cz/michi-pat/
 

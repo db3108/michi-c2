@@ -77,7 +77,7 @@ int nsims(Game *game)
 }
 
 // ----------------------- Is the Position clear enough ? ---------------------
-int is_position_clear_enough(Position *pos)
+int is_position_clear_enough(void)
 // Check if the situation is clear enough after the first tree search.
 {
     if (bestwr < 0.4                             // program is behind
@@ -294,7 +294,7 @@ Point genmove (Game *game, TreeNode *tree, int *owner_map, int *score_count)
         pt = tree_search(pos, tree, n, owner_map, score_count, 0);
         if (is_time_limited(game)
             && (nplayouts_real*2 > nplayouts) 
-            && !is_position_clear_enough(pos)) {
+            && !is_position_clear_enough()) {
             // think harder hoping we will recover
             log_fmt_s('S', "thinking time extended", NULL);
             pt = tree_search(pos, tree, n, owner_map, score_count, 0);

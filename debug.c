@@ -72,21 +72,24 @@ char* debug(Game *game)
     if (strcmp(command, "setpos") == 0) {
         char *str = strtok(NULL, " \t\n");
         while (str != NULL) {
-            Info m=-1;
+            Info m;
+            int  played=0;
             Point pt = parse_coord(str);
             if (point_color(pos, pt) == EMPTY) {
                 ret = play_move(pos, pt);        // suppose alternate play
                 m = pt + (board_captured_neighbors(pos) << 9) 
                        + (board_ko_old(pos) << 13);
+                played = 1;
             }
             else if (pt == PASS_MOVE) {
                 ret = pass_move(pos);
                 m = pt;
+                played = 1;
             }
             else
                 ret ="Error Illegal move: point not EMPTY\n";
             str = strtok(NULL, " \t\n");
-            if (m != -1)
+            if (played)
                 slist_push(game->moves, m);
         }
     }

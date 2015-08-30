@@ -45,7 +45,8 @@ char* do_play(Game *game, Color c, Point pt)
 {
     char *ret;
     Color to_play_before;
-    Info m=-1;
+    int   played=0;
+    Info  m;
     Position *pos = game->pos;
 
     to_play_before = board_color_to_play(pos);
@@ -53,10 +54,12 @@ char* do_play(Game *game, Color c, Point pt)
 
     if (point_color(pos,pt) == EMPTY) {
         ret = play_move(pos, pt);
-        if (ret[0] == 0)
+        if (ret[0] == 0) {
             m = pt + (board_captured_neighbors(pos) << 9) 
                    + (board_ko_old(pos) << 13) 
                    + ((to_play_before) << 22);
+            played = 1;
+        }
         // else illegal move: nothing played
     }
     else if(pt == PASS_MOVE) {
@@ -64,9 +67,10 @@ char* do_play(Game *game, Color c, Point pt)
         m = pt + (board_captured_neighbors(pos) << 9) 
                + (board_ko_old(pos) << 13) 
                + ((to_play_before) << 22);
+        played = 1;
     }
     else ret ="Error Illegal move: point not EMPTY\n";
-    if (m != -1) {
+    if (played) {
         c2++;
         slist_push(game->moves, m);
     }

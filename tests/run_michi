@@ -1,0 +1,7 @@
+#!/bin/bash
+
+mkdir -p tests/tst
+./michi mcdebug tests/confs/config_1.gtp >& tests/tst/mcdebug.txt
+./michi tsdebug tests/confs/config_20000.gtp >& tests/tst/tsdebug.txt
+echo "Michi -- (simple) regression test OK if nothing appears after this line" 
+diff --brief tests/ref tests/tst

@@ -37,6 +37,7 @@ typedef unsigned int  Code4;  // 4 bits code that defines a neighbors selection
 typedef unsigned int  Info;
 typedef unsigned int  Libs;   // 32 bits unsigned integer
 typedef unsigned int  Point;
+typedef unsigned long long ZobristHash;
 typedef Info* Slist;
 typedef enum {
     PASS_MOVE, RESIGN_MOVE, 
@@ -148,7 +149,7 @@ __INLINE__ Point board_ko_old(Position *pos) {return pos->ko_old;}
 __INLINE__ int   board_last_move(Position *pos) {return pos->last;}
 __INLINE__ Point board_last2(Position *pos) {return pos->last2;}
 __INLINE__ Point board_last3(Position *pos) {return pos->last3;}
-__INLINE__ int   board_nmoves(Position *pos) {return pos->n;}
+__INLINE__ Info  board_nmoves(Position *pos) {return (Info) pos->n;}
 __INLINE__ int   board_nstones(Position *pos) 
             {return pos->n - pos->caps[0] - pos->caps[1];} // ignore PASS moves
 __INLINE__ void  board_set_color_to_play(Position *pos, Color c) 
@@ -230,6 +231,12 @@ __INLINE__ int   point_nlibs(Position *pos, Point pt)
 //
 // Note: the pat3_set in patterns.c is a representation of a set as bitfield.
 
+// Random Number generator (32 bits Linear Congruential Generator)
+// Ref: Numerical Recipes in C (W.H. Press & al), 2nd Ed page 284
+extern unsigned int idum;
+__INLINE__ unsigned int qdrandom(void) {idum=(1664525*idum)+1013904223; return idum;}
+__INLINE__ unsigned int random_int(int n) /* random int between 0 and n-1 */ \
+           {unsigned long long r=qdrandom(); return (r*n)>>32;}
 
 // Simple list
 __INLINE__ int  slist_size(Slist l) {return l[0];}

@@ -2,6 +2,12 @@
 -- ChangeLog for the michi-c program
 ------------------------------------
 
+1.4.1 Released ???
+
+- modifs to remove warnings with newer versions of gcc
+- use of "long long" to insure use of 64 bits integers (hash, random generator)
+- runtime check of the length of integers (runtime check for portability)
+
 1.4 Released August, 28 2015
 - read simple sgf files (no variations)
 - live gfx (specific for gogui)

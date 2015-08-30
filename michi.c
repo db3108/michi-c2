@@ -105,7 +105,7 @@ __INLINE__ Position *push_position(Position *pos)
     return newpos;
 }
 
-__INLINE__ void pop_position(Position *pos)
+__INLINE__ void pop_position(void)
 {
     avail_pos--;
 }
@@ -150,11 +150,11 @@ Point read_ladder_attack(Position *pos, Point pt, Slist libs)
         // if block is in atari and cannot escape, it is caugth in a ladder
         if (is_atari && slist_size(moves) == 0) {
             move = l1;
-            pop_position(pos_l);
+            pop_position();
             goto finished;
         }
     }
-    pop_position(pos_l);
+    pop_position();
 
 process_l2:     // exploration can be done in pos which is a workspace
     if (disp_ladder) fprintf(stderr,"read_ladder_attack:\n");
@@ -516,8 +516,9 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[],
 // Start a Monte Carlo playout from a given position, return score for to-play
 // player at the starting position; amaf_map is board-sized scratchpad recording// who played at a given position first
 {
+    Color  start_color=board_color_to_play(pos);
     double s=0.0;
-    int    passes=0, start_color=board_color_to_play(pos);
+    int    passes=0;
     Point  last_moves_neighbors[20], moves[BOARDSIZE], move;
     if(disp) {
         disp_ladder = 1;
@@ -887,7 +888,7 @@ Point tree_search(Position *pos, TreeNode *tree, int n, int owner_map[],
 
     for (i=0 ; i<n ; i++) {
         if (live_gfx && (i % Live_gfx_interval) == Live_gfx_interval-1)
-            display_live_gfx(i, pos, tree, owner_map);
+            display_live_gfx(pos, tree, owner_map);
 
         *workpos = *pos;
         memset(amaf_map, 0, BOARDSIZE*sizeof(int));

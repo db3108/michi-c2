@@ -147,6 +147,9 @@ happen in the previous sequence. This should give you enough feedback,
 either from the shell (if you made an error in the path) or from michi, for you
 to undersand what the problem is and to correct it.
 
+If you are still in trouble, maybe is it time to read the section 4 
+"Troubleshooting" in the INSTALL file.
+
 2.2 What michi think of the position ?
 --------------------------------------
 

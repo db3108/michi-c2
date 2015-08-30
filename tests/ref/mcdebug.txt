@@ -1,0 +1,45 @@
+Move: 0     Black: 0 caps   White: 0 caps   Komi: 7.5
+ 19 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 18 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 17 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 16 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 15 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 14 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 13 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 12 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 11 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 10 . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 9  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 8  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 7  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 6  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 5  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 4  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 3  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 2  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+ 1  . . . . . . . . . . . . . . . . . . .     . . . . . . . . . . . . . . . . . . .
+    A B C D E F G H J K L M N O P Q R S T 
+
+Move: 432   Black: 74 caps   White: 49 caps   Komi: 7.5
+ 19 . O O O . O X X X X X X X X O O O O . 
+ 18 O O O . O O X . X X . X O X O . O O O 
+ 17 . O O O O X X X X X X X O X O O O O . 
+ 16 O O . O O X X X . X X O O X O X X O O 
+ 15 . O O O O O O X X X X O O X X . X X X 
+ 14 O O O O X X O X X X O O O O X X . X X 
+ 13 . O O O X X O X O O O O . O X . X X . 
+ 12 O . O X X X X X X O . O O . O X . X X 
+ 11 O O O X . X X X X X O O O O O X X O X 
+ 10 X O O X X X X X X X X X X X X X X O O 
+ 9  X O O X X X X . X X X X X O O X X X O 
+ 8  X O O X X . X X X X . X O O X X O O O 
+ 7  X X X X X X . X X X X X O X X O O . O 
+ 6  X . X X . X X X . X X X O O O O . O . 
+ 5  X X . X X . X X X O O O . O O O O . O 
+ 4  X X X X X X X O O O O . O O O . O O . 
+ 3  . X . X . X . X O . O O O O . O O . O 
+ 2  X . X X X X X X X O O O O O O O O O . 
+ 1  X X X . X X . X X X X O . O . O O . O 
+    A B C D E F G H J K L M N O P Q R S T 
+
+mcplayout    0    785239685   13.5

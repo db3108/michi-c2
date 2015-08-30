@@ -461,8 +461,7 @@ char *gtp_set_free_handicap(Game *game, char *str)
     return ret;
 }
 
-char* gtp_sg_compare_float(Game *game, TreeNode *tree, 
-                        int owner_map[BOARDSIZE], int score_count[2*N*N+1])
+char* gtp_sg_compare_float(void) 
 {
     char   *str = strtok(NULL, " \t\n");
 
@@ -611,7 +610,7 @@ char* gtp_visit_count(Position *pos, TreeNode *tree)
     return buf;
 }
 
-void display_live_gfx(int i, Position *pos, TreeNode *tree,
+void display_live_gfx(Position *pos, TreeNode *tree,
                                                      int owner_map[BOARDSIZE])
 // use the live gfx capability of gogui to do animation during the search
 {
@@ -753,7 +752,7 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
             ret = gtp_set_free_handicap(game, str);
         }
         else if (strcmp(command, "sg_compare_float") == 0)
-            ret = gtp_sg_compare_float(game, tree, owner_map, score_count);
+            ret = gtp_sg_compare_float();
         else if (strcmp(command, "time_settings") == 0)
             ret = gtp_time_settings(game);
         else if (strcmp(command,"version") == 0)
