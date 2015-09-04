@@ -9,7 +9,7 @@
 #include "non_portable.h"
 //========================= Definition of Data Structures =====================
 // --------------------------- Board Constants --------------------------------
-#define N          19
+#define N          13
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
@@ -179,7 +179,7 @@ __INLINE__ Block point_block(Position *pos, Point pt) {return pos->block[pt];}
 __INLINE__ Color point_color(Position *pos, Point pt) {return pos->color[pt];}
 __INLINE__ Byte  point_env4(Position *pos, Point pt)  {return pos->env4[pt];}
 __INLINE__ Byte  point_env4d(Position *pos, Point pt) {return pos->env4d[pt];}
-__INLINE__ Byte  point_env8(Position *pos, Point pt)  
+__INLINE__ int   point_env8(Position *pos, Point pt)  
                                {return (pos->env4d[pt] << 8) + pos->env4[pt];}
 __INLINE__ int   point_is_stone(Position *pos, Point pt)  
                                 {return (point_color(pos, pt) & 2) != 0;}
