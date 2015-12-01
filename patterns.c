@@ -529,6 +529,22 @@ void permute(int permutation[8][141],int i,char strpat[256],char strperm[256])
 }
 
 // Code: -------------------- load pattern definitions ------------------------
+int max_pattern_id(FILE *f)
+// Determine the size of the large pattern database (max of id)
+{
+    float prob;
+    int   id, id_max=0,t1,t2;
+
+    while (fgets(buf, 255, f) != NULL) {
+        if (buf[0] == '#') continue;
+        sscanf(buf,"%f %d %d (s:%d)", &prob, &t1, &t2, &id);
+        if (id>id_max)
+            id_max = id;
+    }
+    return id_max;
+    rewind(f);
+}
+
 void load_prob_file(FILE *f)
 // Load the probabilities of large patterns
 {
@@ -612,12 +628,14 @@ void init_large_patterns(const char *prob, const char *spat)
 
     // Load patterns data from files
     patterns = michi_calloc(LENGTH, sizeof(LargePat));
-    probs = michi_calloc(1064481, sizeof(float));
     log_fmt_s('I', "Loading pattern probs ...", NULL);
     fprob = fopen(prob, "r");
     if (fprob == NULL)
         log_fmt_s('w', "Cannot load pattern file:%s","patterns.prob");
     else {
+        int id_max = max_pattern_id(fprob);
+        log_fmt_i('I', "Reading patterns (id_max = %d)", id_max);
+        probs = michi_calloc(id_max+1, sizeof(float));
         load_prob_file(fprob);
         fclose(fprob);
     }

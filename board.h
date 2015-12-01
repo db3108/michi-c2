@@ -9,7 +9,7 @@
 #include "non_portable.h"
 //========================= Definition of Data Structures =====================
 // --------------------------- Board Constants --------------------------------
-#define N          13
+#define N          19
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
