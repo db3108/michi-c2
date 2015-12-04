@@ -638,14 +638,15 @@ void init_large_patterns(const char *prob, const char *spat)
         probs = michi_calloc(id_max+1, sizeof(float));
         load_prob_file(fprob);
         fclose(fprob);
-    }
-    log_fmt_s('I', "Loading pattern spatial dictionary ...", NULL);
-    fspat = fopen(spat, "r");
-    if (fspat == NULL)
-        log_fmt_s('w', "Warning: Cannot load pattern file:%s","patterns.spat");
-    else {
-        load_spat_file(fspat);
-        fclose(fspat);
+ 
+        log_fmt_s('I', "Loading pattern spatial dictionary ...", NULL);
+        fspat = fopen(spat, "r");
+        if (fspat == NULL)
+            log_fmt_s('w', "Warning: Cannot load pattern file:%s","patterns.spat");
+        else {
+            load_spat_file(fspat);
+            fclose(fspat);
+        }
     }
     if (verbosity > 0 && (fprob == NULL || fspat == NULL)) {
         fprintf(stderr, "Warning: michi cannot load pattern files, "
