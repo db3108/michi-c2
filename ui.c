@@ -240,14 +240,14 @@ void begin_game(void) {
     log_fmt_s('I', buf, NULL);
 }
 
-char* gtp_clear_board(Game *game, TreeNode *tree)
+char* gtp_clear_board(Game *game, TreeNode **tree)
 {
     char *ret;
 
     if (game_ongoing) begin_game();
     game_ongoing = 0;
-    free_tree(tree);
-    tree = new_tree_node();
+    free_tree(*tree);
+    *tree = new_tree_node();
     nplayouts_per_second = -1.0;
     ret = game_clear_board(game);
     return ret;
@@ -700,7 +700,7 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         else if (strcmp(command, "boardsize") == 0)
             ret = gtp_boardsize(pos);
         else if (strcmp(command, "clear_board") == 0)
-            ret = gtp_clear_board(game, tree);
+            ret = gtp_clear_board(game, &tree);
         else if (strcmp(command,"debug") == 0)
             ret = debug(game);
         else if (strcmp(command,"final_score") == 0)
