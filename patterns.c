@@ -541,8 +541,8 @@ int max_pattern_id(FILE *f)
         if (id>id_max)
             id_max = id;
     }
-    return id_max;
     rewind(f);
+    return id_max;
 }
 
 void load_prob_file(FILE *f)
