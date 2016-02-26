@@ -9,7 +9,7 @@
 #include "non_portable.h"
 //========================= Definition of Data Structures =====================
 // --------------------------- Board Constants --------------------------------
-#define N          13
+#define N          19
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
@@ -128,6 +128,7 @@ void   ppoint(Point pt);
 char*  slist_str_as_point(Slist l);
 char*  slist_from_str_as_point(Slist l, char *str);
 char*  str_coord(Point pt, char str[5]);
+char*  str_sgf_coord(Point pt, char str[8], int size);
 //-------------------- Functions inlined for performance ----------------------
 #ifndef _MSC_VER
     #define __INLINE__ static inline

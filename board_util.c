@@ -174,6 +174,17 @@ Point parse_sgf_coord(char *s, int size)
     return (y+1)*(N+1) + x + 1;
 }
 
+char* str_sgf_coord(Point pt, char str[8], int size)
+{
+    if (pt == PASS_MOVE) strcpy(str, "pass");
+    else if (pt == RESIGN_MOVE) strcpy(str, "resign");
+    else {
+        int row = pt/(N+1) - 1; int col = (pt%(N+1)) - 1;
+        sprintf(str, "%c%c", 'a' + col, 'a' + row - (N-size));
+    }
+    return str;
+}
+
 //------------------------ Costly functions on Slist --------------------------
 char* slist_str_as_int(Slist l) {
     buf[0]=0;

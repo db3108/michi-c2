@@ -3,6 +3,7 @@
 ---------------------------------------
 
 1.4.1 Released ???
+- add storesgf gtp command
 - add estimated best reply in the log
 - make zobrist hash initialization independant of user defined random seed
 - make board a self-contained module 

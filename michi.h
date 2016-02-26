@@ -113,6 +113,7 @@ char*  game_clear_board(Game *game);
 int    is_game_board_empty(Game *game);
 char*  do_play(Game *game, Color c, Point pt);
 char*  loadsgf(Game *game, const char *filename, int nmoves);
+char*  storesgf(Game *game, const char *filename, const char* version);
 //---------------------------- Functions in ui.c ------------------------------
 void   display_live_gfx(Position *pos, TreeNode *tree,
                                                      int owner_map[BOARDSIZE]);

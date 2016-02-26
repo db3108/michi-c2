@@ -474,6 +474,18 @@ char* gtp_sg_compare_float(void)
     return buf;
 }
 
+char* gtp_storesgf(Game *game)
+{
+    char *filename, *ret;
+
+    filename = strtok(NULL, " \t\n");
+    if (filename != NULL)
+        ret = storesgf(game, filename, version);
+    else
+        ret = "Error - missing filename";
+    return ret;
+}
+
 char *gtp_time_left(Game *game)
 {
     char *ret, *str = strtok(NULL, " \t\n");
@@ -663,7 +675,7 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         "known_command\nkomi\nloadsgf\nlist_commands\n"
         "name\nowner_map\nparam_general\nparam_playout\nparam_tree\nplay\n"
         "principal_variation\nprotocol_version\nquit\nscore_histogram\n"
-        "set_free_handicap\nsg_compare_float\n"
+        "set_free_handicap\nsg_compare_float\nstoresgf\n"
         "time_left\ntime_settings\nundo\nversion\nvisit_count";
     TreeNode *tree;
     tree = new_tree_node();
@@ -753,6 +765,8 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         }
         else if (strcmp(command, "sg_compare_float") == 0)
             ret = gtp_sg_compare_float();
+        else if (strcmp(command,"storesgf") == 0)
+            ret = gtp_storesgf(game);
         else if (strcmp(command, "time_settings") == 0)
             ret = gtp_time_settings(game);
         else if (strcmp(command,"version") == 0)
@@ -797,6 +811,7 @@ int michi_console(int argc, char *argv[])
     log_fmt_s('T', "time          :  nsims seconds  sims/s moves tleft", NULL);
     log_fmt_s('S', "search: idum dkomi 1st (2nd) rep best2  bestr bestwr "
                    "games/s", NULL);
+
     // Run time checks that michi requirements are fulfilled
     if (sizeof(int) < 4)
         fatal_error("michi-c needs size of int >= 4 bytes (see michi.log)");

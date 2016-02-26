@@ -77,6 +77,59 @@ char* do_play(Game *game, Color c, Point pt)
     return ret;
 }
 
+// ----------------------- Write Game to SGF file -----------------------------
+char* storesgf(Game *game, const char *filename, const char* version)
+// Write the sequence of moves stored in the game structure in SGF file
+{
+    char     date[24], str[8];
+    FILE     *f = fopen(filename, "w");
+    Position *pos = game->pos;
+    int      size = board_size(pos);
+
+    if (f != NULL) {
+        // Get the current date
+        time_t     tp=time(NULL);
+        struct tm *tm=gmtime(&tp);
+        strftime(date,24,"%Y-%m-%d",tm);
+
+        // write the root node
+        fprintf(f, "(;FF[4]CA[UTF-8]AP[michi-c:%s]SZ[%d]KM[%.1f]DT[%s]\n",
+                version, size, board_komi(pos), date);
+        if (slist_size(game->placed_black_stones) > 0) {
+            fprintf(f, "AB");
+            int n = 0;
+            FORALL_IN_SLIST(game->placed_black_stones, pt) {
+                fprintf(f, "[%s]", str_sgf_coord(pt, str, size));
+                if (++n % 10 == 0) fprintf(f, "\n  ");
+            }
+            fprintf(f, "\n");
+        }
+        if (slist_size(game->placed_white_stones) > 0) {
+            fprintf(f, "AW");
+            int n = 0;
+            FORALL_IN_SLIST(game->placed_white_stones, pt) {
+                fprintf(f, "[%s]", str_sgf_coord(pt, str, size));
+                if (++n % 10 == 0) fprintf(f, "\n  ");
+            }
+            fprintf(f, "\n");
+        }
+
+        // write the moves
+        FORALL_IN_SLIST(game->moves, m) {
+            Color c = m >> 22;
+            m &= 511;
+            char color = (c == BLACK) ? 'B' : 'W';
+            fprintf(f, ";%c[%s]", color, str_sgf_coord(m, str, size));
+        }
+        fprintf(f, ")\n");
+        fclose(f);
+        buf[0] = 0;
+    }
+    else
+        sprintf(buf, "Error - can't open file %s", filename);
+    
+    return buf;
+}
 // ------------------------ SGF Recursive Parser ------------------------------
 // This file implement a Recursive Descent Parser for the SGF grammar 
 // References :
