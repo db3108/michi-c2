@@ -45,8 +45,8 @@ char* do_play(Game *game, Color c, Point pt)
 {
     char *ret;
     Color to_play_before;
-    int   played=0;
     Info  m;
+    int   played=0;
     Position *pos = game->pos;
 
     to_play_before = board_color_to_play(pos);
@@ -128,7 +128,7 @@ char* prop_name[] = { "",   "AB", "AW",  "B",  "W",  "C",
                       "PL", "HA", "MULTIGOGM", 
                        "N", "AE", "GM", "GN", "US", "GW",
                       "GB", "DM", "UC", "TE", "BM", "DO",
-                      "IT",
+                      "IT", "PB", "PW", "BR", "WR", "PC",
                       NULL };
 #define NOT_FOUND        0
 
@@ -231,7 +231,8 @@ void accept(int tok)
 void ValueType(void)
 // ValueType = Point | Number | Real | Text | None
 {
-    if (symbol == POINT || symbol == STRING || symbol == UPPERCASE_STRING
+    if (symbol == POINT || symbol == STRING 
+        || symbol == UPPERCASE_STRING || symbol == LOWERCASE_STRING
         || symbol == NUMBER || symbol == REAL) {
         accept(symbol);
         //fprintf(stderr, "%s ", yytext);
@@ -386,7 +387,7 @@ void Collection(void)
     GameTree(); RestOfCollection();
 }
 
-char *loadsgf(Game *sgf_game, char *filename, int sgf_nmoves)
+char *loadsgf(Game *sgf_game, const char *filename, int sgf_nmoves)
 // Load a position from the SGF file filename using a recursive parser for the
 // SGF grammar which is described at the top of the current file.
 // See ref [1].

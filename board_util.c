@@ -23,8 +23,9 @@ void log_fmt_s(char type, const char *msg, const char *s)
     fprintf(flog, "%c %5d/%3.3d ", type, c1, c2);
     fprintf(flog, msg, s); fprintf(flog, "\n");
     if(type == 'E') {
-        fprintf(stderr,"%c %5d/%3.3d ", type, c1, c2);
+        fprintf(stderr,"\nERROR - ");
         fprintf(stderr, msg, s); fprintf(stderr,"\n");
+        exit(-1);
     }
     if(nmsg++ > 1000000) too_many_msg();
 }

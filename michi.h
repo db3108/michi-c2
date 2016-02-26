@@ -112,10 +112,11 @@ void   free_game(Game *game);
 char*  game_clear_board(Game *game);
 int    is_game_board_empty(Game *game);
 char*  do_play(Game *game, Color c, Point pt);
-char*  loadsgf(Game *game, char *filename, int nmoves);
+char*  loadsgf(Game *game, const char *filename, int nmoves);
 //---------------------------- Functions in ui.c ------------------------------
 void   display_live_gfx(Position *pos, TreeNode *tree,
                                                      int owner_map[BOARDSIZE]);
+void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[]);
 //-------------------- Functions inlined for performance ----------------------
 __INLINE__ int  is_time_limited(Game *game) {return game->time_init >0;}
 

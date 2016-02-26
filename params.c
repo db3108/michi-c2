@@ -33,8 +33,6 @@ double FASTPLAY5_THRES = 0.95;//if at 5% playouts winrate is >this, stop reading
 double RESIGN_THRES            = 0.2;
 char   Live_gfx[80]            = "None";
 int    Live_gfx_interval       = 1000;
-
-unsigned int idum        = 1;
 //==================================== Code ===================================
 int pk_line;
 char *margin[] = {
@@ -171,7 +169,7 @@ char* param_tree(void)
         READ_VALUE(EXPAND_VISITS, %d)
     else if (strcmp(param, "PRIOR_EVEN") == 0)
         READ_VALUE(PRIOR_EVEN, %d)
-    else if (strcmp(param, "PRIOR_SEdATARI") == 0)
+    else if (strcmp(param, "PRIOR_SELFATARI") == 0)
         READ_VALUE(PRIOR_SELFATARI, %d)
     else if (strcmp(param, "PRIOR_CAPTURE_ONE") == 0)
         READ_VALUE(PRIOR_CAPTURE_ONE, %d)

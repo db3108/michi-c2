@@ -34,6 +34,21 @@ static char  buf[BUFLEN];
 // Displacements towards the neighbors of a point
 //                      North East South  West  NE  SE  SW  NW
 static int   delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
+Mark  *mark1, *mark2;
+unsigned int idum    = 1;
+
+//========== Initialization and Terminaison of the Board module ===============
+void board_init(void)
+{
+    mark1 = michi_calloc(1, sizeof(Mark));
+    mark2 = michi_calloc(1, sizeof(Mark));
+}
+
+void board_finish(void)
+{
+    free(mark1); mark1 = NULL;
+    free(mark2); mark2 = NULL;
+}
 
 //====================================== Eyes =================================
 char is_eyeish(Position *pos, Point pt)

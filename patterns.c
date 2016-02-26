@@ -419,6 +419,9 @@ void init_stone_color(void)
 
 void init_zobrist_hashdata(void)
 {
+    int idum_save = idum;
+    idum = 55555; // make sure zobrist_hashdata does not depend on user input
+                  // 55555 seems to work reasonably well
     for (int d=0 ; d<141 ; d++)  {//d = displacement ...
         for (int c=0 ; c<4 ; c++) {
             unsigned int d1 = qdrandom(), d2=qdrandom();
@@ -426,6 +429,7 @@ void init_zobrist_hashdata(void)
             zobrist_hashdata[d][c] = (ld1<<32) + ld2;
         }
     }
+    idum = idum_save;
 }
   
 ZobristHash zobrist_hash(char *pat)

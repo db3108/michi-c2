@@ -309,7 +309,7 @@ char *gtp_genmove(Game *game, TreeNode *tree, int *owner_map, int *score_count)
     else if (pt != RESIGN_MOVE)
         play_move(pos, pt);
     Info m = pt + (board_captured_neighbors(pos) <<9) 
-                + (board_ko_old(pos) << 13);
+                + (board_ko_old(pos) << 13) + (c << 22);
     slist_push(game->moves, m);
     ret = str_coord(pt, buf);  
     c2++;
@@ -785,21 +785,28 @@ int michi_console(int argc, char *argv[])
     char *command;
     double score;
 
-    // Initialization of all global data
+    // Setup log
     flog = fopen("michi.log", "w");
     setbuf(flog, NULL);                // guarantees that log is unbuffered
     log_fmt_s('I',"michi-c Version %s", version);
     log_fmt_i('I',"size of struct Position = %d bytes", sizeof(Position));
     log_fmt_i('I',"size of struct TreeNode = %d bytes", sizeof(TreeNode));
-    log_fmt_i('I',"size of int  = %d bytes", sizeof(int));
-    log_fmt_i('I',"size of long = %d bytes", sizeof(long));
-    make_pat3set();
+    log_fmt_i('I',"size of int       = %d bytes", sizeof(int));
+    log_fmt_i('I',"size of long      = %d bytes", sizeof(long));
+    log_fmt_i('I',"size of long long = %d bytes", sizeof(long long));
     log_fmt_s('T', "time          :  nsims seconds  sims/s moves tleft", NULL);
-    log_fmt_s('S', "search: idum dkomi 1st (2nd) best2  bestr bestwr games/s"
-                                                                        , NULL);
+    log_fmt_s('S', "search: idum dkomi 1st (2nd) rep best2  bestr bestwr "
+                   "games/s", NULL);
+    // Run time checks that michi requirements are fulfilled
+    if (sizeof(int) < 4)
+        fatal_error("michi-c needs size of int >= 4 bytes (see michi.log)");
+    if (sizeof(long long) < 8)  // should never happen by C99 standard
+        fatal_error("michi-c needs size of long long >= 8 bytes(see michi.log)");
+
+    // Initialization of all global data
+    make_pat3set();
     already_suggested = michi_calloc(1, sizeof(Mark));
-    mark1 = michi_calloc(1, sizeof(Mark));
-    mark2 = michi_calloc(1, sizeof(Mark));
+    board_init();
     int      *amaf_map=michi_calloc(BOARDSIZE, sizeof(int)); 
     int      *owner_map=michi_calloc(BOARDSIZE, sizeof(int));
     int      *score_count=michi_calloc(2*N*N+1, sizeof(int));
@@ -809,11 +816,11 @@ int michi_console(int argc, char *argv[])
     FORALL_POINTS(pos,pt)
         if (point_color(pos,pt) == EMPTY) slist_push(allpoints,pt);
 
-    // Optional initialization file (contains gtp commands)
     if (argc < 2)
         usage();
     command = argv[1];
     if (argc == 3) {
+        // Optional initialization file (contains gtp commands)
         FILE *f=fopen(argv[2],"r");
         if (f != NULL) {
             gtp_io(game, f,flog, owner_map, score_count);
@@ -870,8 +877,9 @@ int michi_console(int argc, char *argv[])
     // Cleanup
     free_game(game); 
     free(amaf_map); free(score_count); free(owner_map);
-    free(already_suggested); free(mark1); free(mark2);
+    free(already_suggested);
     free_large_patterns();
+    board_finish();
     fclose(flog);
     return 0;
 }

@@ -9,7 +9,7 @@
 #include "non_portable.h"
 //========================= Definition of Data Structures =====================
 // --------------------------- Board Constants --------------------------------
-#define N          19
+#define N          13
 #define W         (N+2)
 #define BOARDSIZE ((N+1)*W+1)
 #define BOARD_IMIN (N+1)
@@ -88,6 +88,8 @@ extern int  large_coord[BOARDSIZE]; // mapping: c in board -> cl in large_board
 
 //================================== Code =====================================
 //--------------------------- Functions in board.c ----------------------------
+void   board_init(void);
+void   board_finish(void);
 void   block_compute_libs(Position *pos, Block b, Slist libs, int max_libs);
 int    cmpint(const void *i, const void *j);
 void   compute_block(Position *pos, Point pt, Slist stones, Slist libs,

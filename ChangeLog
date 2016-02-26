@@ -1,13 +1,17 @@
-------------------------------------
--- ChangeLog for the michi-c program
-------------------------------------
+---------------------------------------
+-- ChangeLog for the michi-c program --
+---------------------------------------
 
 1.4.1 Released ???
-
+- add estimated best reply in the log
+- make zobrist hash initialization independant of user defined random seed
+- make board a self-contained module 
+- correction for reading sgf files coming from kgs
 - correct a bug with noticeable impact on michi-c strength (point_env8())
 - modifs to remove warnings with newer versions of gcc
 - use of "long long" to insure use of 64 bits integers (hash, random generator)
 - runtime check of the length of integers (runtime check for portability)
+- bugs correction
 
 1.4 Released August, 28 2015
 - read simple sgf files (no variations)

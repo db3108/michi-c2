@@ -516,9 +516,8 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[],
 // Start a Monte Carlo playout from a given position, return score for to-play
 // player at the starting position; amaf_map is board-sized scratchpad recording// who played at a given position first
 {
-    Color  start_color=board_color_to_play(pos);
     double s=0.0;
-    int    passes=0;
+    int    passes=0, start_color=board_color_to_play(pos);
     Point  last_moves_neighbors[20], moves[BOARDSIZE], move;
     if(disp) {
         disp_ladder = 1;
@@ -849,7 +848,7 @@ float best2, bestr, bestwr;
 void collect_infos(TreeNode *tree, int n, TreeNode *best,
         TreeNode *workspace[], Position *pos)
 {
-    char str[10], str2[10];
+    char str[10], str2[10], str_r[10];
     TreeNode *second, *reply;
 
     nplayouts_real += n;
@@ -858,15 +857,27 @@ void collect_infos(TreeNode *tree, int n, TreeNode *best,
     workspace[0] = best; workspace[1] = 0;
     second = best_move(tree, workspace);
     bestwr= winrate(best);
-    best2 = bestwr / winrate(second);
+    if (second != NULL) {
+        best2 = bestwr / winrate(second);
+        str_coord(second->move, str2);
+    }
+    else {
+        best2 = 0.0;
+        str2[0] = 0;
+    }
     reply = best_move(best, NULL);
-    if (reply != NULL)
+    if (reply != NULL) {
         bestr = bestwr - winrate(reply);
+        str_coord(reply->move, str_r);
+    }
+    else {
+        bestr = 0.0;
+        str_r[0] = 0;
+    }
     str_coord(best->move, str);
-    str_coord(second->move, str2);
-    sprintf(buf, "%12u %5.1f %3s (%3s) %5.2f %6.3f %6.3f %7.1f"
-               , idum, board_delta_komi(pos), str, str2, best2, bestr, bestwr,
-                                                     nplayouts_per_second);
+    sprintf(buf, "%12u %5.1f %3s (%3s) %3s %5.2f %6.3f %6.3f %7.1f"
+               , idum, board_delta_komi(pos), str, str2, str_r
+               , best2, bestr, bestwr, nplayouts_per_second);
     log_fmt_s('S', buf, NULL);
 }
 
@@ -954,6 +965,22 @@ void dump_subtree(TreeNode *node, double thres, char *indent, FILE *f
     }
 }
 
+void dump_node(TreeNode *node, FILE *f)
+// Dump node
+{
+    char str[8];
+    int k=1;
+    if (node->nchildren) {
+        for (TreeNode **c = node->children ; *c != NULL ; c++) {
+            TreeNode*n = *c;
+            fprintf(f,"%3d %3s %5d/%-5d %5d/%-5d %5d/%-5d %d\n"
+                    , k++, str_coord(n->move,str)
+                    , n->w,n->v, n->pw,n->pv, n->aw,n->av
+                    , n->nchildren);
+        }
+    }
+}
+
 void compute_principal_variation(TreeNode *tree, Point moves[6])
 // Return the best sequence of moves (according to the tree)
 {
@@ -968,6 +995,7 @@ void compute_principal_variation(TreeNode *tree, Point moves[6])
 
 void compute_best_moves(TreeNode *tree, char sep[2]
                                         , TreeNode *best_node[5], char *can)
+// Build a string with the coordinates and winrate of the 5 best moves
 {
     char str[8], tmp[32];
 
