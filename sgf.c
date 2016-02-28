@@ -1,13 +1,14 @@
 // sgf.c -- Read and write SGF files for the michi-c gtp engine
+//          and update the Game structure accordingly
 #include "michi.h"
 
-char buf[128];    
 FILE *f;           // source of the sgf data
 Game *game;        // game in which the sgf file will be written
 int  nmoves;       // number of moves loaded from the sgf file
 // Displacements towards the neighbors of a point
 //                      North East South  West  NE  SE  SW  NW
 static int   delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
+static char  buf[4046];    
 
 // ---------------------- Update of the Game struct ---------------------------
 Game *new_game(Position *pos)
@@ -42,6 +43,25 @@ int is_game_board_empty(Game *game)
         return 0;
     else
         return 1;
+}
+
+char* board_set_size_safe(Position *pos, char *str)
+// Set the size of the board with check that it is compatible with compilation
+{
+    char *ret;
+    int size = atoi(str);
+    if (size > N) {
+        sprintf(buf, "Error - Trying to set incompatible boardsize %s"
+                     " (max=%d)", str, N);
+        log_fmt_s('W', buf, NULL);
+        ret = buf;
+    }
+    else {
+        board_set_size(pos, size);
+        empty_position(pos);
+        ret = "";
+    }
+    return ret;
 }
 
 void update_zhash(Game *game, Color c, Point pt)
@@ -202,7 +222,7 @@ char* storesgf(Game *game, const char *filename, const char* version)
 }
 
 // ------------------------ SGF Recursive Parser ------------------------------
-// This file implement a Recursive Descent Parser for the SGF grammar 
+// This code implement a Recursive Descent Parser for the SGF grammar 
 // References :
 // [1] Aho, Lam, Sethi, Ullman. Compilers. 2nd Edition (The Dragon book)
 // [2] http://www.red-bean.com/sgf/sgf4.html#2 (SGF)
@@ -239,6 +259,9 @@ int  symbol;       // lookahead symbol
 char yytext[8192]; // the text of the current token
 int  yyleng;       // length of the string representation of the current token
 int  yyval;        // value of the current token
+char sgferr[80];   // Error message 
+// bad hack for reading the sgf files produced by gogui-twogtp
+int  read_raw_text=0;
 
 #define UPPERCASE_STRING 256
 #define LOWERCASE_STRING 257
@@ -272,53 +295,66 @@ int yylex(void)
     while(isspace(c=fgetc(f)))
         if (c == '\n') lineno++;
 
-    if (!isalnum(c) && c != '+' && c != '-')
-        return c;
-    else {
-        yyleng = 0;
-        yytext[yyleng++] = c;
-        if (isdigit(c) || c == '+' || c == '-') {
-            all_lower = 0;
-            all_upper = 0;
-            number = 1;
-            while ((c=fgetc(f)) != ']' && c != '[') {
-                if (!isdigit(c)) {
-                    if (c == '.') {
-                        real = 1;
-                    }
-                    else {
-                        number = 0;
-                        real = 0;
-                    }
-                }
-                yytext[yyleng++] = c;
-            }
+    if (read_raw_text) {
+        all_upper=0;
+        all_lower=0;
+        while ((c=fgetc(f)) != ']') {
+            if (c == '\\')
+                c = fgetc(f);        // read \] in comments for example
+            all_lower = all_lower && islower(c);
+            all_upper = all_upper && isupper(c);
+            yytext[yyleng++] = c;
         }
-        else {
-            while ((c=fgetc(f)) != ']' && c != '[') {
-                all_lower = all_lower && islower(c);
-                all_upper = all_upper && isupper(c);
-                yytext[yyleng++] = c;
-            }
-        }
-        ungetc(c, f);
-        yytext[yyleng] = 0;
-
-        if (real)   return REAL;
-        if (number) return NUMBER;
-
-        if (all_upper) {
-            yyval = find(yytext, prop_name);
-            return UPPERCASE_STRING;
-        }
-        else if (all_lower) {
-            if (yyleng == 2)
-                return POINT;
-            else
-                return LOWERCASE_STRING;
-        }
-        return STRING;
     }
+    else {
+        if (!isalnum(c) && c != '+' && c != '-')
+            return c;
+        else {
+            yyleng = 0;
+            yytext[yyleng++] = c;
+            if (isdigit(c) || c == '+' || c == '-') {
+                all_lower = 0;
+                all_upper = 0;
+                number = 1;
+                while ((c=fgetc(f)) != ']' && c != '[') {
+                    if (!isdigit(c)) {
+                        if (c == '.') {
+                            real = 1;
+                        }
+                        else {
+                            number = 0;
+                            real = 0;
+                        }
+                    }
+                    yytext[yyleng++] = c;
+                }
+            }
+            else {
+                while ((c=fgetc(f)) != ']' && c != '[') {
+                    all_lower = all_lower && islower(c);
+                    all_upper = all_upper && isupper(c);
+                    yytext[yyleng++] = c;
+                }
+            }
+        }
+    }
+    ungetc(c, f);
+    yytext[yyleng] = 0;
+
+    if (real)   return REAL;
+    if (number) return NUMBER;
+
+    if (all_upper) {
+        yyval = find(yytext, prop_name);
+        return UPPERCASE_STRING;
+    }
+    else if (all_lower) {
+        if (yyleng == 2)
+            return POINT;
+        else
+            return LOWERCASE_STRING;
+    }
+    return STRING;
 }
 
 char* token_name(int tok)
@@ -334,6 +370,10 @@ char* token_name(int tok)
         sprintf(buf,"UPPERCASE_STRING");
     else if (tok == LOWERCASE_STRING)
         sprintf(buf,"LOWERCASE_STRING");
+    else if (tok == NUMBER)
+        sprintf(buf,"NUMBER");
+    else if (tok == REAL)
+        sprintf(buf,"REAL");
     else
         sprintf(buf,"token not known");
     return buf;
@@ -343,13 +383,27 @@ void accept(int tok)
 {
     if (symbol == tok) symbol = yylex();
     else {
-        fprintf(stderr, "line %d: Syntax Error\n", lineno);
+        fprintf(stderr, "line %d: Syntax Error while reading sgf file\n",
+                lineno);
         fprintf(stderr, "expected symbol: \"%s\"", token_name(tok));
-        fprintf(stderr, ", read \"%s\"\n",token_name(symbol));
+        if (symbol < 256) {
+            fprintf(stderr, ", read \"%s\"\n",token_name(symbol));
+            sprintf(buf, "sgf line %d: expected symbol: \"%s\", read \"%s\"", 
+                    lineno, token_name(tok), token_name(symbol));
+            log_fmt_s('W', buf, NULL);
+        }
+        else {
+            fprintf(stderr, ", read \"%s\" %s\n",token_name(symbol), yytext);
+            sprintf(buf, "sgf line %d: expected symbol: \"%s\", read \"%s\" %s"
+                    , lineno, token_name(tok), token_name(symbol), yytext);
+            log_fmt_s('W', buf, NULL);
+        }
     }
-    //printf("%s", token_name(symbol));
-    //if (symbol == UPPERCASE_STRING) printf(": %s", yytext);
-    //printf("\n");
+    //fprintf(stderr, "%s", token_name(symbol));
+    //if (symbol==UPPERCASE_STRING || symbol==STRING 
+    //    || symbol==NUMBER || symbol==REAL) 
+    //    fprintf(stderr, ": %s", yytext);
+    //fprintf(stderr, "\n");
 }
 
 void ValueType(void)
@@ -366,18 +420,22 @@ void ValueType(void)
 void PropValue(void)
 // PropValue = "[" ValueType "]"
 {
-    accept('['); ValueType();
+    Position *pos=game->pos;
+
+    accept('['); 
+    read_raw_text = 0;  // reset after the raw text has been read (lookahead)
+    ValueType();
 
     // Property Value was read : use it to modify the game
-    int size = board_size(game->pos);
-    if (board_nmoves(game->pos) < nmoves-1 
+    int size = board_size(pos);
+    if (board_nmoves(pos) < nmoves-1 
         && strcmp(prop_name[prop], "B") == 0) {
         if (yytext[0] != 'B')
             do_play(game, BLACK, parse_sgf_coord(yytext, size));
         else
             do_play(game, BLACK, PASS_MOVE);
     }
-    else if (board_nmoves(game->pos) < nmoves-1 
+    else if (board_nmoves(pos) < nmoves-1 
         && strcmp(prop_name[prop], "W") == 0) {
         if (yytext[0] != 'W')
             do_play(game, WHITE, parse_sgf_coord(yytext, size));
@@ -387,30 +445,34 @@ void PropValue(void)
     else if (strcmp(prop_name[prop], "AB") == 0) {
         Point pt = parse_sgf_coord(yytext, size);
         slist_push(game->placed_black_stones, pt);
-        board_place_stone(game->pos, pt, BLACK);
+        board_place_stone(pos, pt, BLACK);
     }
     else if (strcmp(prop_name[prop], "AW") == 0) {
         Point pt = parse_sgf_coord(yytext, size);
         slist_push(game->placed_white_stones, pt);
-        board_place_stone(game->pos, pt, WHITE);
+        board_place_stone(pos, pt, WHITE);
     }
     else if (strcmp(prop_name[prop], "KM") == 0)
-        board_set_komi(game->pos, atof(yytext));
+        board_set_komi(pos, atof(yytext));
     else if (strcmp(prop_name[prop], "SZ") == 0) {
+        char *ret;
         if (is_game_board_empty(game)) { 
-            board_set_size(game->pos, atoi(yytext));
+            ret = board_set_size_safe(pos, yytext);
+            strcpy(sgferr, buf);        // save the potential error message
+            if (ret[0] != 0) return;    // early abort
             game_clear_board(game);
         }
         else {
             // Can happen if SZ occurs after AB or AW
             Point    bstones[BOARDSIZE], wstones[BOARDSIZE];
-            Position *pos=game->pos;
 
             slist_clear(bstones); slist_clear(wstones);
             slist_append(bstones, game->placed_black_stones);
             slist_append(wstones, game->placed_white_stones);
 
-            board_set_size(game->pos, atoi(yytext));
+            ret = board_set_size_safe(pos, yytext);
+            strcpy(sgferr, buf);        // save the potential error message
+            if (ret[0] != 0) return;    // early abort
             game_clear_board(game);
             
             FORALL_IN_SLIST(bstones, pt) {
@@ -427,9 +489,9 @@ void PropValue(void)
     }
     else if (strcmp(prop_name[prop], "PL") == 0) {
         if (strcmp(yytext, "B") == 0)
-            board_set_color_to_play(game->pos, BLACK);
+            board_set_color_to_play(pos, BLACK);
         else
-            board_set_color_to_play(game->pos, WHITE);
+            board_set_color_to_play(pos, WHITE);
     }
 
     accept(']');
@@ -439,7 +501,9 @@ void PropValues(void)
 // Propvalues = { PropValue }
 {
     if (symbol == '[') {
-        PropValue(); PropValues();
+        PropValue(); 
+        if (sgferr[0] !=0) return;    // early abort
+        PropValues();
     }
 }
 
@@ -447,6 +511,8 @@ void PropIdent(void)
 {
     if (symbol == UPPERCASE_STRING) {
         prop = yyval;
+        if (strcmp(yytext,"C")==0)
+            read_raw_text = 1;          // will be reset by PropValue
         //if (yyval > 0 ) 
         //    fprintf(stderr, "prop %s: ",  yytext);
         //else
@@ -458,7 +524,9 @@ void PropIdent(void)
 void Property(void)
 // Property = PropIdent { PropValue }
 {
-    PropIdent(); PropValue(); PropValues();
+    PropIdent(); PropValue(); 
+    if (sgferr[0] !=0) return;    // early abort
+    PropValues();
     //fprintf(stderr, "\n");
 }
 
@@ -466,7 +534,9 @@ void Properties(void)
 // Properties = { Property }
 {
     if (symbol == UPPERCASE_STRING) {
-        Property(); Properties();
+        Property(); 
+        if (sgferr[0] !=0) return;    // early abort
+        Properties();
     }
 }
 
@@ -480,41 +550,50 @@ void RestOfSequence(void)
 // RestOfSequence = Node RestOfSequence | None
 {
     if (symbol == ';') { 
-        Node(); RestOfSequence();
+        Node(); 
+        if (sgferr[0] !=0) return;    // early abort
+        RestOfSequence();
     }
 }
 
 void Sequence(void)
 // Sequence = Node RestOfSequence
 {
-    Node(); RestOfSequence();
+    Node(); 
+    if (sgferr[0] !=0) return;    // early abort
+    RestOfSequence();
 }
 
 void RestOfCollection(void);
 void GameTree(void)
 // GameTree = "(" Sequence RestOfCollection ")"
 {
-    accept('('); Sequence(); RestOfCollection(); accept(')');
+    accept('('); Sequence(); 
+    if (sgferr[0] !=0) return;    // early abort
+    RestOfCollection(); accept(')');
 }
 
 void RestOfCollection(void)
 // RestOfCollection = GameTree RestOfCollection | None
 {
     if (symbol == '(') {
-        GameTree(); RestOfCollection();
+        GameTree(); 
+        if (sgferr[0] !=0) return;    // early abort
+        RestOfCollection();
     }
 }
 
 void Collection(void)
 // Collection = GameTree RestOfCollection
 {
-    GameTree(); RestOfCollection();
+    GameTree(); 
+    if (sgferr[0] !=0) return;    // early abort
+    RestOfCollection();
 }
 
 char *loadsgf(Game *sgf_game, const char *filename, int sgf_nmoves)
 // Load a position from the SGF file filename using a recursive parser for the
-// SGF grammar which is described at the top of the current file.
-// See ref [1].
+// SGF grammar which is described above. See ref [1].
 //
 // The modifications of the game struct is done in ProPValue()
 //
@@ -525,14 +604,19 @@ char *loadsgf(Game *sgf_game, const char *filename, int sgf_nmoves)
     nmoves = sgf_nmoves;       // Number of moves loaded from sgf file
 
     game_clear_board(game);
+    sgferr[0] = 0;
     if (f != NULL) {
         symbol = yylex();
         Collection();
         assert(symbol == '\n' || symbol == EOF);
-        if (board_color_to_play(game->pos) == BLACK)
-            strcpy(buf,"B");
-        else
-            strcpy(buf,"W");
+        if (sgferr[0]!=0)
+            sprintf(buf, "%s", sgferr);
+        else {
+            if (board_color_to_play(game->pos) == BLACK)
+                strcpy(buf,"B");
+            else
+                strcpy(buf,"W");
+        }
         fclose(f);
     }
     else {
