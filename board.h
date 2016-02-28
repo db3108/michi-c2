@@ -28,7 +28,6 @@
 #endif
 
 #define BUFLEN 256
-#define MAX_GAME_LEN (N*N*3)
 #define INVALID_VERTEX  999
 //------------------------------- Data Structures -----------------------------
 typedef unsigned char Byte;
@@ -92,6 +91,7 @@ void   board_init(void);
 void   board_finish(void);
 void   block_compute_libs(Position *pos, Block b, Slist libs, int max_libs);
 int    cmpint(const void *i, const void *j);
+void   compute_big_eye(Position *pos, Point pt, Slist points);
 void   compute_block(Position *pos, Point pt, Slist stones, Slist libs,
                                                                     int nlibs);
 void   compute_cfg_distances(Position *pos, Point pt, char cfg_map[BOARDSIZE]);

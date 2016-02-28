@@ -346,7 +346,7 @@ int primes[32]={5,      11,    37,   103,   293,   991, 2903,  9931,
 
 static char buf[512];
 int         color[256];
-ZobristHash zobrist_hashdata[141][4];
+ZobristHash zobrist_hashdata[ZOBRIST_HASH_SIZE][4];
 LargePat*   patterns;
 float*      probs;
 long long   nsearchs=0;
@@ -377,11 +377,11 @@ int find_pat(ZobristHash key)
     int h = (key>>20) & KMASK, h2=primes[(key>>(20+KSIZE)) & 15], len=1;
     nsearchs++;
     while (patterns[h].key != key) {
-        len++;
         if (patterns[h].key == 0) {
             sum_len_failure += len;
             return h;
         }
+        len++;
         h+=h2; if (h>LENGTH) h -= LENGTH;
     }
     nsuccess++;
@@ -422,7 +422,7 @@ void init_zobrist_hashdata(void)
     int idum_save = idum;
     idum = 55555; // make sure zobrist_hashdata does not depend on user input
                   // 55555 seems to work reasonably well
-    for (int d=0 ; d<141 ; d++)  {//d = displacement ...
+    for (int d=0 ; d<ZOBRIST_HASH_SIZE ; d++)  {//d = displacement ...
         for (int c=0 ; c<4 ; c++) {
             unsigned int d1 = qdrandom(), d2=qdrandom();
             ZobristHash ld1 = d1, ld2 = d2;
@@ -622,7 +622,7 @@ void log_hashtable_synthesis()
 void init_large_patterns(const char *prob, const char *spat)
 // Initialize all the data necessary to use large patterns 
 {
-    FILE *fspat, *fprob;    // Files containing large patterns
+    FILE *fspat=NULL, *fprob=NULL;    // Files containing large patterns
 
     // Initializations
     init_zobrist_hashdata();
@@ -642,7 +642,7 @@ void init_large_patterns(const char *prob, const char *spat)
         probs = michi_calloc(id_max+1, sizeof(float));
         load_prob_file(fprob);
         fclose(fprob);
- 
+
         log_fmt_s('I', "Loading pattern spatial dictionary ...", NULL);
         fspat = fopen(spat, "r");
         if (fspat == NULL)

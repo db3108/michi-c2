@@ -8,6 +8,11 @@
 #define TWOLIBS_TEST      1
 #define TWOLIBS_TEST_NO   0
 #define TWOLIBS_EDGE_ONLY 1
+#if BOARDSIZE < 141
+    #define ZOBRIST_HASH_SIZE 141
+#else
+    #define ZOBRIST_HASH_SIZE BOARDSIZE
+#endif
 // ---------------------------- MCTS Constants --------------------------------
 extern int   N_SIMS, RAVE_EQUIV, EXPAND_VISITS;
 extern int   PRIOR_EVEN, PRIOR_SELFATARI, PRIOR_CAPTURE_ONE, PRIOR_CAPTURE_MANY;
@@ -28,6 +33,8 @@ typedef struct {
     Point    moves[MAX_GAME_LEN];
     Point    placed_black_stones[BOARDSIZE];
     Point    placed_white_stones[BOARDSIZE];
+    ZobristHash zhash;
+    ZobristHash zhistory[MAX_GAME_LEN];
 } Game;
 
 typedef struct tree_node { // ------------ Monte-Carlo tree node --------------
@@ -64,7 +71,7 @@ extern float        start_playouts_sec, stop_playouts_sec;
 extern int          nplayouts_real;
 extern float        saved_time_left;
 extern float        best2, bestr, bestwr;
-
+extern ZobristHash  zobrist_hashdata[ZOBRIST_HASH_SIZE][4];
 //================================== Code =====================================
 //------------------------- Functions in control.c ----------------------------
 void   compute_all_status(Position *pos, int owner_map[BOARDSIZE],
@@ -75,6 +82,7 @@ Point  genmove (Game *game, TreeNode *tree, int *owner_map, int *score_count);
 //-------------------------- Functions in debug.c -----------------------------
 char*  debug(Game *game);
 //-------------------------- Functions in michi.c -----------------------------
+TreeNode* best_move(TreeNode *tree, TreeNode **except);
 void   collect_infos(TreeNode *tree, int n, TreeNode *best
                                        , TreeNode *workspace[], Position *pos);
 void   compute_best_moves(TreeNode *tree, char sep[2]
@@ -112,6 +120,7 @@ void   free_game(Game *game);
 char*  game_clear_board(Game *game);
 int    is_game_board_empty(Game *game);
 char*  do_play(Game *game, Color c, Point pt);
+char*  do_undo(Game *game);
 char*  loadsgf(Game *game, const char *filename, int nmoves);
 char*  storesgf(Game *game, const char *filename, const char* version);
 //---------------------------- Functions in ui.c ------------------------------

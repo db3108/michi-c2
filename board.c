@@ -295,7 +295,7 @@ __INLINE__ void block_clear_libs(Position *pos, Block b)
     pos->nlibs[b] = 0;
 }
 
-__INLINE__ int block_capture(Position *pos, Block b, Point pt)
+int block_capture(Position *pos, Block b, Point pt)
 // Remove stones of block b from the board (b contains pt), reset data of b
 // Return the number of captured stones.
 {

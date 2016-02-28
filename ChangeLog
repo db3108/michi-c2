@@ -3,6 +3,7 @@
 ---------------------------------------
 
 1.4.1 Released ???
+- respect the Superko rule (Positional)
 - add storesgf gtp command
 - add estimated best reply in the log
 - make zobrist hash initialization independant of user defined random seed

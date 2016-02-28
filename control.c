@@ -63,7 +63,7 @@ int nsims(Game *game)
         reduction = 2.0;
     }
     if (board_nmoves(game->pos) < 15) 
-        reduction = 4.0;
+        reduction = 2.0;
     nplayouts = (float) game->time_left / moves_to_play  * nplayouts_per_second;
     nplayouts /= reduction;
     if (nplayouts > 100000) nplayouts = 100000;
@@ -80,8 +80,8 @@ int nsims(Game *game)
 int is_position_clear_enough(void)
 // Check if the situation is clear enough after the first tree search.
 {
-    if (bestwr < 0.4                             // program is behind
-        || best2 < 2.0  || fabs(bestr) > 0.02)   // unclear situation
+    if (bestwr < 0.5)                              // program is behind
+        //|| best2 < 2.0  || fabs(bestr) > 0.02)   // unclear situation
         return 0;         // we will try to extend the thinking time
     else
         return 1;

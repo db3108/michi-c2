@@ -5,6 +5,9 @@ char buf[128];
 FILE *f;           // source of the sgf data
 Game *game;        // game in which the sgf file will be written
 int  nmoves;       // number of moves loaded from the sgf file
+// Displacements towards the neighbors of a point
+//                      North East South  West  NE  SE  SW  NW
+static int   delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
 
 // ---------------------- Update of the Game struct ---------------------------
 Game *new_game(Position *pos)
@@ -27,6 +30,7 @@ char* game_clear_board(Game *game)
     slist_clear(game->moves);
     slist_clear(game->placed_black_stones);
     slist_clear(game->placed_white_stones);
+    game->zhash = 0;
     return empty_position(game->pos);
 }
 
@@ -40,19 +44,77 @@ int is_game_board_empty(Game *game)
         return 1;
 }
 
+void update_zhash(Game *game, Color c, Point pt)
+// Update Zobrist Hash of the position (handle captures)
+{
+    Point points[BOARDSIZE];
+
+    game->zhash ^= zobrist_hashdata[pt][c];
+    if (game->pos->undo_capture) {
+        Color other = color_other(c);
+        for (int k=0; k<4 ; k++) {
+            if (game->pos->undo_capture & (1<<k)) {
+                Point n = pt + delta[k];
+                compute_big_eye(game->pos, n, points);
+                FORALL_IN_SLIST(points, s) {
+                    game->zhash ^= zobrist_hashdata[s][other];
+                }
+            }
+        }
+    }
+}
+
+char* look_for_repetition(Game *game)
+{    
+    char *ret="";
+    int n=game->pos->n;
+    if (n > 20)
+        for (int k=1 ; k<20 ; k++)
+            if (game->zhash == game->zhistory[n-k]) 
+                ret = "Error - Positional Superko rule violation";
+                //log_fmt_s('E',"Positional Superko rule violation",NULL);
+    game->zhistory[n] = game->zhash;
+    return ret;
+}
+
+char* do_undo(Game *game)
+{
+    Position *pos = game->pos;
+    Point move = slist_pop(game->moves);
+
+    board_set_captured_neighbors(pos, (move >> 9) & 15);
+    board_set_ko_old(pos, (move >> 13) & 511);
+    update_zhash(game, color_other(pos->to_play), pos->last);
+    char *ret=undo_move(pos);
+    board_set_color_to_play(pos, move >> 22);
+    if (ret[0]==0) c2--;
+    if (board_nmoves(pos) > 3)
+        board_set_last3(pos, game->moves[board_nmoves(pos)-2] & 511);
+    return ret;
+}
+
 char* do_play(Game *game, Color c, Point pt)
 // Play the move (updating the Game struct)
 {
-    char *ret;
+    char *ret="", str[8];
     Color to_play_before;
     Info  m;
     int   played=0;
     Position *pos = game->pos;
 
+    if (pt == RESIGN_MOVE)
+        goto finished;
+
     to_play_before = board_color_to_play(pos);
     board_set_color_to_play(pos, c);
-
-    if (point_color(pos,pt) == EMPTY) {
+    if(pt == PASS_MOVE) {
+        ret = pass_move(pos);
+        m = pt + (board_captured_neighbors(pos) << 9) 
+               + (board_ko_old(pos) << 13) 
+               + ((to_play_before) << 22);
+        played = 1;
+    }
+    else if (point_color(pos,pt) == EMPTY) {
         ret = play_move(pos, pt);
         if (ret[0] == 0) {
             m = pt + (board_captured_neighbors(pos) << 9) 
@@ -62,21 +124,29 @@ char* do_play(Game *game, Color c, Point pt)
         }
         // else illegal move: nothing played
     }
-    else if(pt == PASS_MOVE) {
-        ret = pass_move(pos);
-        m = pt + (board_captured_neighbors(pos) << 9) 
-               + (board_ko_old(pos) << 13) 
-               + ((to_play_before) << 22);
-        played = 1;
+    else {
+        sprintf(buf,"Error Illegal move: %s not EMPTY\n", str_coord(pt,str));
+        ret = buf;
     }
-    else ret ="Error Illegal move: point not EMPTY\n";
     if (played) {
         c2++;
         slist_push(game->moves, m);
+        if (pt != PASS_MOVE) {
+            ZobristHash zhash_save = game->zhash;
+            update_zhash(game, c, pt);
+            ret = look_for_repetition(game);
+            if (ret[0] != 0) {
+                log_fmt_p('I',"try illegal move (superko violation) at %s "
+                                                              "(ignored)", pt);
+                do_undo(game);
+                if (game->zhash != zhash_save)
+                    log_fmt_s('W', "Error in undoing zhash", NULL);
+            }
+        }
     }
+finished:
     return ret;
 }
-
 // ----------------------- Write Game to SGF file -----------------------------
 char* storesgf(Game *game, const char *filename, const char* version)
 // Write the sequence of moves stored in the game structure in SGF file
@@ -130,6 +200,7 @@ char* storesgf(Game *game, const char *filename, const char* version)
     
     return buf;
 }
+
 // ------------------------ SGF Recursive Parser ------------------------------
 // This file implement a Recursive Descent Parser for the SGF grammar 
 // References :
@@ -148,7 +219,7 @@ char* storesgf(Game *game, const char *filename, const char* version)
 // Property         = PropIdent { PropValue }
 // PropIdent        = see prop_name[] array below 
 // PropValue        = "[" ValueType "]"
-// ValueType        = Point | None
+// ValueType        = Point | Number | Real | Text | None
 
 // The code is simple. There is a function for each non terminal symbol 
 // of the grammar with the same name of the non terminal.
@@ -446,6 +517,8 @@ char *loadsgf(Game *sgf_game, const char *filename, int sgf_nmoves)
 // See ref [1].
 //
 // The modifications of the game struct is done in ProPValue()
+//
+// Note: the registred game is supposed to be a legal game (no check)
 {
     f = fopen(filename, "r");  // File shared between all the routines
     game = sgf_game;           // Game in which all the actions take place

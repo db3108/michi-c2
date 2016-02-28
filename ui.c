@@ -304,15 +304,24 @@ char *gtp_genmove(Game *game, TreeNode *tree, int *owner_map, int *score_count)
     board_set_color_to_play(pos, c);
     game->computer_color = c;
     pt = genmove(game, tree, owner_map, score_count);
-    if (pt == PASS_MOVE)
-        pass_move(pos);
-    else if (pt != RESIGN_MOVE)
-        play_move(pos, pt);
-    Info m = pt + (board_captured_neighbors(pos) <<9) 
-                + (board_ko_old(pos) << 13) + (c << 22);
-    slist_push(game->moves, m);
-    ret = str_coord(pt, buf);  
-    c2++;
+    ret = do_play(game, c, pt);
+    if (ret[0] == 0)
+        ret = str_coord(pt, buf);  
+    else {      // pt is not legal (superko violation) try 2nd best move
+        TreeNode *best, *second, *workspace[] = {NULL, NULL};
+        best = best_move(tree, NULL);
+        workspace[0] = best;
+        second = best_move(tree, workspace);
+        if (second != NULL) {
+            pt = second->move;
+            ret = do_play(game, c, pt);
+            if (ret[0] != 0)
+                pt = RESIGN_MOVE;   // TODO: implement a more robust solution 
+        }
+        else
+            pt = RESIGN_MOVE;       // TODO: implement a more robust solution
+        ret = str_coord(pt, buf);
+    }
 error:
     return ret;
 }
@@ -416,17 +425,7 @@ char* gtp_play(Game *game)
 
 char* gtp_undo(Game *game)
 {
-    Position *pos = game->pos;
-    Point move = slist_pop(game->moves);
-
-    board_set_captured_neighbors(pos, (move >> 9) & 15);
-    board_set_ko_old(pos, (move >> 13) & 511);
-    char *ret=undo_move(pos);
-    board_set_color_to_play(pos, move >> 22);
-    if (ret[0]==0) c2--;
-    if (board_nmoves(pos) > 3)
-        board_set_last3(pos, game->moves[board_nmoves(pos)-2] & 511);
-    return ret;
+    return do_undo(game);
 }
 
 char *gtp_set_free_handicap(Game *game, char *str)
@@ -461,7 +460,7 @@ char *gtp_set_free_handicap(Game *game, char *str)
     return ret;
 }
 
-char* gtp_sg_compare_float(void) 
+char* gtp_sg_compare_float(void)
 {
     char   *str = strtok(NULL, " \t\n");
 
@@ -786,8 +785,10 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
             print_pos(pos, stderr, owner_map);
 
         if ((ret[0]=='E' && ret[1]=='r')
-             || (ret[0]=='W' && ret[1]=='a')) 
+             || (ret[0]=='W' && ret[1]=='a')) {
                                         fprintf(out,"?%s %s\n\n", cmdid, ret);
+             log_fmt_s('e', "%s", ret);
+        }
         else                            fprintf(out,"=%s %s\n\n", cmdid, ret);
         fflush(out);
     }
