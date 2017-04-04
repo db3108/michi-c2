@@ -182,13 +182,12 @@ char* gogui_setup(Game *game)
     return ret;
 }
 
-char* gogui_setup_player(Game *game)
+char* gogui_setup_player(Game *game, char *str)
 {
-    char *ret="", *str;
+    char *ret="";
     Position *pos=game->pos;
 
     if (board_nmoves(pos) == 0) {
-        str = strtok(NULL, " \t\n");
         if (str != NULL) {
             *str = toupper(*str);
             if (strcmp(str,"B") == 0) 
@@ -212,9 +211,9 @@ char* gogui_setup_player(Game *game)
     return ret;
 }
 
-char* gtp_boardsize(Position *pos)
+char* gtp_boardsize(Position *pos, char *str)
 {
-    char *ret, *str = strtok(NULL, " \t\n");
+    char *ret;
     if(str != NULL) {
         int size = atoi(str);
         if (size > N) {
@@ -275,93 +274,108 @@ char *gtp_final_score(Game *game, int *owner_map, int *score_count)
     return buf;
 }
 
-char *gtp_final_status_list(Game *game, int *owner_map, int *score_count)
+char *gtp_final_status_list(Game *game, char *str, 
+                                int *owner_map, int *score_count)
 {
-    char  *str = strtok(NULL, " \t\n");
-    Point points[BOARDSIZE];
-    Position *pos=game->pos;
-    Status block_status[BOARDSIZE], point_status[BOARDSIZE];
-
+  Point points[BOARDSIZE];
+  Position *pos=game->pos;
+  Status block_status[BOARDSIZE], point_status[BOARDSIZE];
+  if (str != NULL) {
     compute_all_status(pos, owner_map, score_count, block_status, point_status);
     final_status_list(pos, block_status, point_status, str, points);
     return slist_str_as_point(points);
+  }
+  else
+    return "Error - Missing parameter";
 }
 
-char *gtp_genmove(Game *game, TreeNode *tree, int *owner_map, int *score_count)
+char *gtp_genmove(Game *game, char *str, TreeNode *tree, 
+                                        int *owner_map, int *score_count)
 {
     char *ret;
     Point pt;
     Position *pos = game->pos;
 
-    game_ongoing = 1;
-    char  *str = strtok(NULL, " \t\n");
-    Color c = get_color(str);
-    if (buf[0] != 0) {
-        ret = buf;
-        goto error;
-    }
-    
-    board_set_color_to_play(pos, c);
-    game->computer_color = c;
-    pt = genmove(game, tree, owner_map, score_count);
-    ret = do_play(game, c, pt);
-    if (ret[0] == 0)
-        ret = str_coord(pt, buf);  
-    else {      // pt is not legal (superko violation) try 2nd best move
-        TreeNode *best, *second, *workspace[] = {NULL, NULL};
-        best = best_move(tree, NULL);
-        workspace[0] = best;
-        second = best_move(tree, workspace);
-        if (second != NULL) {
-            pt = second->move;
-            ret = do_play(game, c, pt);
-            if (ret[0] != 0)
-                pt = RESIGN_MOVE;   // TODO: implement a more robust solution 
+    if (str != NULL) {
+        game_ongoing = 1;
+        Color c = get_color(str);
+        if (buf[0] != 0) {
+            ret = buf;
+            goto error;
         }
-        else
-            pt = RESIGN_MOVE;       // TODO: implement a more robust solution
-        ret = str_coord(pt, buf);
+        
+        board_set_color_to_play(pos, c);
+        game->computer_color = c;
+        pt = genmove(game, tree, owner_map, score_count);
+        ret = do_play(game, c, pt);
+        if (ret[0] == 0)
+            ret = str_coord(pt, buf);  
+        else {      // pt is not legal (superko violation) try 2nd best move
+            TreeNode *best, *second, *workspace[] = {NULL, NULL};
+            best = best_move(tree, NULL);
+            workspace[0] = best;
+            second = best_move(tree, workspace);
+            if (second != NULL) {
+                pt = second->move;
+                ret = do_play(game, c, pt);
+                if (ret[0] != 0)
+                    pt = RESIGN_MOVE; // TODO: implement a more robust solution
+            }
+            else
+                pt = RESIGN_MOVE;     // TODO: implement a more robust solution
+            ret = str_coord(pt, buf);
+        }
     }
+    else
+        ret = "Error - Missing color";
 error:
     return ret;
 }
 
 char* gtp_undo(Game *game);
-char* gtp_gg_undo(Game *game)
+char* gtp_gg_undo(Game *game, char *str)
 {
-    char *ret="", *str = strtok(NULL, " \t\n");
+    char *ret="";
     int  n; 
 
-    if (sscanf(str,"%d",&n) == 1) {
-        if (n <= board_nmoves(game->pos))
-            for (int i=0 ; i<n ; i++) {
-                ret = gtp_undo(game);
-                if (ret[0] != 0) {
-                    sprintf(buf,"%s (in move %d)", ret, i);
-                    break;
+    if (str != NULL) {
+        if (sscanf(str,"%d",&n) == 1) {
+            if (n <= board_nmoves(game->pos))
+                for (int i=0 ; i<n ; i++) {
+                    ret = gtp_undo(game);
+                    if (ret[0] != 0) {
+                        sprintf(buf,"%s (in move %d)", ret, i);
+                        break;
+                    }
                 }
-            }
-        else
-            ret = "Move list too short";
+            else
+                ret = "Move list too short";
+        }
+        else 
+            ret = "Parameter not an integer";
     }
-    else 
-        ret = "Parameter not an integer";
-    return ret;
-}
-
-char* gtp_known_command(char *known_commands)
-{
-    char *ret, *command = strtok(NULL, " \t\n");
-    if (strstr(known_commands,command) != NULL)
-        ret = "true";
     else
-        ret = "false";
+        ret = "Error - Missing parameter";
     return ret;
 }
 
-char* gtp_komi(Position *pos)
+char* gtp_known_command(char *known_commands, char *command)
 {
-    char  *ret, *str = strtok(NULL, " \t\n");
+    char *ret;
+    if (command != NULL) {
+        if (strstr(known_commands,command) != NULL)
+            ret = "true";
+        else
+            ret = "false";
+    }
+    else
+        ret = "Error - Missing command name";
+    return ret;
+}
+
+char* gtp_komi(Position *pos, char  *str)
+{
+    char  *ret;
     float komi;
 
     if(str != NULL) {
@@ -377,12 +391,11 @@ char* gtp_komi(Position *pos)
     return ret;
 }
 
-char* gtp_loadsgf(Game *game)
+char* gtp_loadsgf(Game *game, char *filename)
 {
-    char *filename, *ret;
+    char *ret;
     int  nmoves;
 
-    filename = strtok(NULL, " \t\n");
     if (filename != NULL) {
         ret = strtok(NULL, " \t\n");
         if (ret == NULL) 
@@ -396,36 +409,40 @@ char* gtp_loadsgf(Game *game)
     return ret;
 }
 
-char* gtp_play(Game *game)
+char* gtp_play(Game *game, char *ret)
 {
-    char *ret;
-
-    ret = strtok(NULL, " \t\n");
-    Color c = get_color(ret);
-    if (buf[0] == 0) {
-        char *str = strtok(NULL, " \t\n");
-        if(str != NULL) {
-            Point pt = parse_coord(str);
-            if (pt == INVALID_VERTEX) {
-                sprintf(buf,"Error - Invalid vertex %s", str);
-                ret = buf;
+    if (ret != NULL) {
+        Color c = get_color(ret);
+        if (buf[0] == 0) {
+            char *str = strtok(NULL, " \t\n");
+            if(str != NULL) {
+                Point pt = parse_coord(str);
+                if (pt == INVALID_VERTEX) {
+                    sprintf(buf,"Error - Invalid vertex %s", str);
+                    ret = buf;
+                }
+                else
+                    ret = do_play(game, c, pt);
             }
             else
-                ret = do_play(game, c, pt);
+                ret = "Error - Missing vertex ";
         }
         else
-            ret = "Error - Missing vertex ";
+            ret = buf;
+        if (ret[0] != 0)
+            game_ongoing = 1;
     }
     else
-        ret = buf;
-    if (ret[0] != 0)
-        game_ongoing = 1;
+        ret = "Error - Missing parameters";
     return ret;
 }
 
 char* gtp_undo(Game *game)
 {
-    return do_undo(game);
+    if (board_nmoves(game->pos) >= 1)
+        return do_undo(game);
+    else
+        return "Error - Board is empty";
 }
 
 char *gtp_set_free_handicap(Game *game, char *str)
@@ -460,24 +477,22 @@ char *gtp_set_free_handicap(Game *game, char *str)
     return ret;
 }
 
-char* gtp_sg_compare_float(void)
+char* gtp_sg_compare_float(char *str)
 {
-    char   *str = strtok(NULL, " \t\n");
-
     if(str != NULL) {
         if (bestwr < atof(str))
             strcpy(buf, "-1");
         else
             strcpy(buf, "1");
     }
+    else
+        strcpy(buf, "Error - Missing parameter (number)");
     return buf;
 }
 
-char* gtp_storesgf(Game *game)
+char* gtp_storesgf(Game *game, char *filename)
 {
-    char *filename, *ret;
-
-    filename = strtok(NULL, " \t\n");
+    char *ret;
     if (filename != NULL)
         ret = storesgf(game, filename, version);
     else
@@ -485,9 +500,9 @@ char* gtp_storesgf(Game *game)
     return ret;
 }
 
-char *gtp_time_left(Game *game)
+char *gtp_time_left(Game *game, char *str)
 {
-    char *ret, *str = strtok(NULL, " \t\n");
+    char *ret;
     if(str != NULL) {
         str = strtok(NULL, " \t\n");
         if(str != NULL) {
@@ -506,10 +521,10 @@ char *gtp_time_left(Game *game)
     return ret;
 }
 
-char* gtp_time_settings(Game *game) 
+char* gtp_time_settings(Game *game, char *str) 
 // Time setting (only absolute time is implemented)
 {
-    char *ret, *str = strtok(NULL, " \t\n");
+    char *ret;
     if(str != NULL){
         if (sscanf(str,"%d", &game->time_init)==1) {
             saved_time_left = game->time_init;
@@ -666,7 +681,7 @@ double mcbenchmark(int n, Position *pos, int amaf_map[], int owner_map[],
 void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
 // Loop that process the gtp commands send by the controller
 {
-    char line[BUFLEN], *cmdid, *command, msg[BUFLEN], *ret;
+    char line[BUFLEN], *arg1, *cmdid, *command, msg[BUFLEN], *ret;
     char *known_commands="best_moves\nboardsize\nclear_board\ncputime\n"
         "debug <subcmd>\nfinal_score\nfinal_status_list\ngenmove\n"
         "gogui-analyze_commands\ngogui-play_sequence\ngogui-setup\n"
@@ -695,13 +710,14 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         }
         else
             cmdid = "";
+        arg1 = strtok(NULL, " \t\n");
 
         if (strcmp(command, "play")==0)
-            ret = gtp_play(game);
+            ret = gtp_play(game, arg1);
         else if (strcmp(command, "genmove") == 0)
-            ret = gtp_genmove(game, tree, owner_map, score_count);
+            ret = gtp_genmove(game, arg1, tree, owner_map, score_count);
         else if (strcmp(command, "time_left") == 0)
-            ret = gtp_time_left(game);
+            ret = gtp_time_left(game, arg1);
         else if (strcmp(command, "cputime") == 0)
             ret = gtp_cputime();
         else if (strcmp(command, "undo") == 0)
@@ -709,15 +725,15 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         else if (strcmp(command, "best_moves") == 0)
             ret = gtp_best_moves(tree);
         else if (strcmp(command, "boardsize") == 0)
-            ret = gtp_boardsize(pos);
+            ret = gtp_boardsize(pos, arg1);
         else if (strcmp(command, "clear_board") == 0)
             ret = gtp_clear_board(game, &tree);
         else if (strcmp(command,"debug") == 0)
-            ret = debug(game);
+            ret = debug(game, arg1);
         else if (strcmp(command,"final_score") == 0)
             ret = gtp_final_score(game, owner_map, score_count);
         else if (strcmp(command,"final_status_list") == 0)
-            ret = gtp_final_status_list(game, owner_map, score_count);
+            ret = gtp_final_status_list(game, arg1, owner_map, score_count);
         else if (strcmp(command,"gogui-analyze_commands") == 0)
             ret = gogui_analyze_commands();
         else if (strcmp(command,"gogui-play_sequence") == 0)
@@ -725,21 +741,21 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         else if (strcmp(command,"gogui-setup") == 0)
             ret = gogui_setup(game);
         else if (strcmp(command,"gogui-setup_player") == 0)
-            ret = gogui_setup_player(game);
+            ret = gogui_setup_player(game, arg1);
         else if (strcmp(command,"gg-undo") == 0)
-            ret = gtp_gg_undo(game);
+            ret = gtp_gg_undo(game, arg1);
         else if (strcmp(command,"help") == 0)
             ret = known_commands;
         else if (strcmp(command,"kgs-genmove_cleanup") == 0) {
             play_until_the_end = 1;
-            ret = gtp_genmove(game, tree, owner_map, score_count);
+            ret = gtp_genmove(game, arg1, tree, owner_map, score_count);
         }
         else if (strcmp(command,"known_command") == 0)
-            ret = gtp_known_command(known_commands);
+            ret = gtp_known_command(known_commands, arg1);
         else if (strcmp(command,"komi") == 0)
-            ret = gtp_komi(pos);
+            ret = gtp_komi(pos, arg1);
         else if (strcmp(command,"loadsgf") == 0)
-            ret = gtp_loadsgf(game);
+            ret = gtp_loadsgf(game, arg1);
         else if (strcmp(command,"list_commands") == 0)
             ret = known_commands;
         else if (strcmp(command,"name") == 0)
@@ -763,11 +779,11 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
             ret = gtp_set_free_handicap(game, str);
         }
         else if (strcmp(command, "sg_compare_float") == 0)
-            ret = gtp_sg_compare_float();
+            ret = gtp_sg_compare_float(arg1);
         else if (strcmp(command,"storesgf") == 0)
-            ret = gtp_storesgf(game);
+            ret = gtp_storesgf(game, arg1);
         else if (strcmp(command, "time_settings") == 0)
-            ret = gtp_time_settings(game);
+            ret = gtp_time_settings(game, arg1);
         else if (strcmp(command,"version") == 0)
             ret = version;
         else if (strcmp(command,"visit_count") == 0)
@@ -875,7 +891,6 @@ int michi_console(int argc, char *argv[])
     else if (strcmp(command,"tsdebug") == 0) {
         TreeNode *tree = new_tree_node();
         empty_position(pos);
-        expand(pos, tree);
         memset(owner_map, 0, BOARDSIZE*sizeof(int));
         memset(score_count, 0, (2*N*N+1)*sizeof(int));
         Point move=tree_search(pos, tree, N_SIMS, owner_map, score_count, 0);
@@ -885,8 +900,11 @@ int michi_console(int argc, char *argv[])
         print_pos(pos, stderr, NULL); 
         free_tree(tree);
     }
-    else if (strcmp(command,"defaults") == 0)
+    else if (strcmp(command,"defaults") == 0) {
+        strcpy(buf, "t");
+        strtok(buf, " \t\n");  // for use of strtok in make_params_default()
         make_params_default(stdout);
+    }
     else
         usage();
 

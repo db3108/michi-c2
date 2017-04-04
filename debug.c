@@ -55,10 +55,10 @@ void print_marker(Position *pos, Mark *marker)
     print_pos(&pos2, stdout, 0);
 }
 
-char* debug(Game *game)
+char* debug(Game *game, char *command)
 // Analyse the subcommands of the gtp debug command
 {
-    char *command = strtok(NULL," \t\n"), *ret="";
+    char *ret="";
     char *known_commands = "\nblocks_OK\nenv8\nfix_atari\ngen_playout\n"
         "match_pat3\nmatch_pat\nplayout\nprint_mark\nsavepos\nsetpos\n"
         "to_play";
@@ -68,6 +68,9 @@ char* debug(Game *game)
     Info sizes[BOARDSIZE];
     Point moves[BOARDSIZE];
     Position *pos = game->pos;
+
+    if (command == NULL)
+        return "Error - Missing parameters";
 
     if (strcmp(command, "setpos") == 0) {
         char *str = strtok(NULL, " \t\n");

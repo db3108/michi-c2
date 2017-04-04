@@ -80,7 +80,7 @@ Score  final_score(Game *game, Status block_status[MAX_BLOCKS],
                                           Status point_status[BOARDSIZE]);
 Point  genmove (Game *game, TreeNode *tree, int *owner_map, int *score_count);
 //-------------------------- Functions in debug.c -----------------------------
-char*  debug(Game *game);
+char*  debug(Game *game, char *command);
 //-------------------------- Functions in michi.c -----------------------------
 TreeNode* best_move(TreeNode *tree, TreeNode **except);
 void   collect_infos(TreeNode *tree, int n, TreeNode *best
