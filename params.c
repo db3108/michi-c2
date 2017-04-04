@@ -101,10 +101,10 @@ char *margin[] = {
     }                                                                         \
 }
 
-char* param_playout() 
+char* param_playout(const char *param) 
 // Implement gtp command that list or modify parameters of the playout policy
 {
-    char *param = strtok(NULL," \t\n"), *ret=buf, key_value[80];
+    char *ret=buf, key_value[80];
     char *known_params = "\nPROB_HEURISTIC_CAPTURE\nPROB_HEURISTIC_PAT3\n"
         "PROB_REJECT_SELF_ATARI_RANDOM\nPROB_REJECT_SELF_ATARI_SUGGESTED\n";
 
@@ -128,13 +128,18 @@ char* param_playout()
         READ_VALUE(PROB_SSAREJECT, %lf)
     else if (strcmp(param, "PROB_RSAREJECT") == 0)
         READ_VALUE(PROB_RSAREJECT, %lf)
+    else {
+        log_fmt_s('W',"%s is not a param_playout", param);
+        strtok(NULL," \t\n");                   // make the strtok buffer empty
+        ret = "Error - not a param_playout";
+    }
     return ret;
 }
 
-char* param_tree(void) 
+char* param_tree(const char *param) 
 // Implement gtp command that list or modify parameters of the tree policy
 {
-    char *param = strtok(NULL," \t\n"), *ret=buf, key_value[80];
+    char *ret=buf, key_value[80];
     char *known_params = "\nN_SIMS\nRAVE_EQUIV\nEXPAND_VISITS\n"
         "PRIOR_EVEN\nPRIOR_SELFATARI\nPRIOR_CAPTURE_ONE\nPRIOR_CAPTURE_MANY\n"
         "PRIOR_PAT3\nPRIOR_LARGEPATTERN\nPRIOR_CFG[0]\nPRIOR_CFG[1]\n"
@@ -187,6 +192,11 @@ char* param_tree(void)
         READ_VALUE(PRIOR_CFG[2], %d)
     else if (strcmp(param, "PRIOR_EMPTYAREA") == 0)
         READ_VALUE(PRIOR_EMPTYAREA, %d)
+    else {
+        log_fmt_s('W',"%s is not a param_tree", param);
+        strtok(NULL," \t\n");                   // make the strtok buffer empty
+        ret = "Error - not a param_tree";
+    }
     return ret;
 }
 
@@ -205,10 +215,10 @@ unsigned int true_random_seed(void)
     return (r1^r2);
 }
 
-char* param_general(void) 
+char* param_general(const char *param) 
 // Implement gtp command that list or modify general parameters
 {
-    char *param = strtok(NULL," \t\n"), *ret=buf, key_value[800];
+    char *ret=buf, key_value[800];
     char *known_params = "play_until_the_end\nuse_dynamic_komi\nverbosity\n"
                          "komi_per_handicap_stone\n"
                          "REPORT_PERIOD\nRESIGN_THRES\n"
@@ -264,6 +274,11 @@ char* param_general(void)
         READ_VALUE_STRING(Live_gfx, %s)
     else if (strcmp(param, "Live_gfx_interval") == 0)
         READ_VALUE(Live_gfx_interval, %d)
+    else {
+        log_fmt_s('W',"%s is not a param_general", param);
+        strtok(NULL," \t\n");                   // make the strtok buffer empty
+        ret = "Error - not a param_general";
+    }
     return ret;
 }
 
@@ -279,8 +294,8 @@ void params_fprint(FILE *f, const char *cmd)
 void make_params_default(FILE *f)
 {
     raw = 1;
-    param_general(); params_fprint(f, "param_general");
-    param_tree();    params_fprint(f, "param_tree");
-    param_playout(); params_fprint(f, "param_playout");
+    param_general(NULL); params_fprint(f, "param_general");
+    param_tree(NULL);    params_fprint(f, "param_tree");
+    param_playout(NULL); params_fprint(f, "param_playout");
     raw = 0;
 }

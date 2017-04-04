@@ -763,11 +763,11 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         else if (strcmp(command,"owner_map") == 0)
             ret = gtp_owner_map(pos, owner_map);
         else if (strcmp(command,"param_general") == 0)
-            ret = param_general();
+            ret = param_general(arg1);
         else if (strcmp(command,"param_playout") == 0)
-            ret = param_playout();
+            ret = param_playout(arg1);
         else if (strcmp(command,"param_tree") == 0)
-            ret = param_tree();
+            ret = param_tree(arg1);
         else if (strcmp(command, "principal_variation") == 0)
             ret = gtp_principal_variation(pos, tree);
         else if (strcmp(command,"protocol_version") == 0)
@@ -900,11 +900,8 @@ int michi_console(int argc, char *argv[])
         print_pos(pos, stderr, NULL); 
         free_tree(tree);
     }
-    else if (strcmp(command,"defaults") == 0) {
-        strcpy(buf, "t");
-        strtok(buf, " \t\n");  // for use of strtok in make_params_default()
+    else if (strcmp(command,"defaults") == 0)
         make_params_default(stdout);
-    }
     else
         usage();
 

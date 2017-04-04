@@ -103,9 +103,9 @@ Point  tree_search(Position *pos, TreeNode *tree, int n, int owner_map[],
                                              int score_count[], int disp);
 //-------------------------- Functions in params.c ----------------------------
 void   make_params_default(FILE *f);
-char*  param_general(void);
-char*  param_playout(void);
-char*  param_tree(void);
+char*  param_general(const char *param);
+char*  param_playout(const char *param);
+char*  param_tree(const char *param);
 //------------------------- Functions in patterns.c ---------------------------
 void   free_large_patterns(void);
 void   make_pat3set(void);
