@@ -80,7 +80,7 @@ int nsims(Game *game)
 int is_position_clear_enough(void)
 // Check if the situation is clear enough after the first tree search.
 {
-    if (bestwr < 0.5)                              // program is behind
+    if (bestwr < 0.48)                             // program is behind
         //|| best2 < 2.0  || fabs(bestr) > 0.02)   // unclear situation
         return 0;         // we will try to extend the thinking time
     else
@@ -274,7 +274,7 @@ int is_better_to_pass(Game *game, int *owner_map, int *score_count)
 }
 
 // ------------------------- Generate next move -------------------------------
-Point genmove (Game *game, TreeNode *tree, int *owner_map, int *score_count)
+Point genmove (Game *game, TreeNode **tree, int *owner_map, int *score_count)
 {
     Point pt;
     Position *pos = game->pos;
@@ -283,21 +283,21 @@ Point genmove (Game *game, TreeNode *tree, int *owner_map, int *score_count)
         pt = PASS_MOVE;
     }
     else {
-        free_tree(tree);
-        tree = new_tree_node();
+        free_tree(*tree);
+        *tree = new_tree_node();
         int n = nsims(game);
         memset(owner_map, 0, BOARDSIZE*sizeof(int));
         memset(score_count, 0, (2*N*N+1)*sizeof(int));
         if (use_dynamic_komi)
             update_dyn_komi(game);
         nplayouts_real = 0;
-        pt = tree_search(pos, tree, n, owner_map, score_count, 0);
+        pt = tree_search(pos, *tree, n, owner_map, score_count, 0);
         if (is_time_limited(game)
             && (nplayouts_real*2 > nplayouts) 
             && !is_position_clear_enough()) {
             // think harder hoping we will recover
             log_fmt_s('S', "thinking time extended", NULL);
-            pt = tree_search(pos, tree, n, owner_map, score_count, 0);
+            pt = tree_search(pos, *tree, n, owner_map, score_count, 0);
         }
     }
     return pt;

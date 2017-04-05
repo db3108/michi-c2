@@ -15,6 +15,7 @@ Game *new_game(Position *pos)
 {
     Game *game=michi_calloc(1, sizeof(Game));
     game->pos = pos;
+    game->komi = 7.5;       // default value
     game_clear_board(game);
     return game;
 }
@@ -25,14 +26,22 @@ void free_game(Game *game)
     free(game);
 }
 
+void game_set_komi(Game *game, float komi)
+{
+    game->komi = komi;
+}
+
 char* game_clear_board(Game *game) 
 {
+    char *ret;
     game->handicap = 0;
     slist_clear(game->moves);
     slist_clear(game->placed_black_stones);
     slist_clear(game->placed_white_stones);
     game->zhash = 0;
-    return empty_position(game->pos);
+    ret = empty_position(game->pos);
+    game->pos->komi = game->komi;
+    return ret;
 }
 
 int is_game_board_empty(Game *game) 

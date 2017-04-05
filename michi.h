@@ -26,6 +26,7 @@ extern double RESIGN_THRES, FASTPLAY20_THRES, FASTPLAY5_THRES;
 typedef struct {
     Position *pos;
     int      handicap;
+    float    komi;
     Color    computer_color;
     int      time_left;          // main time left: maintained internally
     int      time_left_gtp;      // main time left: provided   by time_left
@@ -78,7 +79,7 @@ void   compute_all_status(Position *pos, int owner_map[BOARDSIZE],
         int score_count[], Status block_status[], Status point_status[]);
 Score  final_score(Game *game, Status block_status[MAX_BLOCKS], 
                                           Status point_status[BOARDSIZE]);
-Point  genmove (Game *game, TreeNode *tree, int *owner_map, int *score_count);
+Point  genmove (Game *game, TreeNode **tree, int *owner_map, int *score_count);
 //-------------------------- Functions in debug.c -----------------------------
 char*  debug(Game *game, char *command);
 //-------------------------- Functions in michi.c -----------------------------
@@ -118,6 +119,7 @@ double large_pattern_probability(Point pt);
 Game*  new_game(Position *pos);
 void   free_game(Game *game);
 char*  game_clear_board(Game *game);
+void   game_set_komi(Game *game, float komi);
 int    is_game_board_empty(Game *game);
 char*  do_play(Game *game, Color c, Point pt);
 char*  do_undo(Game *game);

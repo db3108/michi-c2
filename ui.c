@@ -17,6 +17,7 @@ void usage() {
 "   * mcdebug     run a series of playouts (verbose, nb of sims as above)\n"
 "   * tsdebug     run a series of tree searches\n"
 "   * defaults    write a template of config file on stdout (defaults values)\n"
+"   * selfplay    run a sequence of self play games\n"
 "and\n"
 "   * config.gtp  an optional file containing gtp commands\n\n");
     exit(-1);
@@ -289,7 +290,7 @@ char *gtp_final_status_list(Game *game, char *str,
     return "Error - Missing parameter";
 }
 
-char *gtp_genmove(Game *game, char *str, TreeNode *tree, 
+char *gtp_genmove(Game *game, char *str, TreeNode **tree, 
                                         int *owner_map, int *score_count)
 {
     char *ret;
@@ -312,9 +313,9 @@ char *gtp_genmove(Game *game, char *str, TreeNode *tree,
             ret = str_coord(pt, buf);  
         else {      // pt is not legal (superko violation) try 2nd best move
             TreeNode *best, *second, *workspace[] = {NULL, NULL};
-            best = best_move(tree, NULL);
+            best = best_move(*tree, NULL);
             workspace[0] = best;
-            second = best_move(tree, workspace);
+            second = best_move(*tree, workspace);
             if (second != NULL) {
                 pt = second->move;
                 ret = do_play(game, c, pt);
@@ -373,14 +374,14 @@ char* gtp_known_command(char *known_commands, char *command)
     return ret;
 }
 
-char* gtp_komi(Position *pos, char  *str)
+char* gtp_komi(Game *game, char  *str)
 {
     char  *ret;
     float komi;
 
     if(str != NULL) {
         if(sscanf(str, "%f", &komi) == 1) {
-            board_set_komi(pos, komi);
+            game_set_komi(game, komi);
             ret = "";
         }
         else
@@ -678,6 +679,39 @@ double mcbenchmark(int n, Position *pos, int amaf_map[], int owner_map[],
     return sumscore/n;
 }
 
+void selfplay(int n, Game *game, int *owner_map, int *score_count)
+// run n self play games. Save the games as sgf files.
+{
+    char filename[80], *ret;
+    int k, npasses;
+    TreeNode *tree = new_tree_node();
+    verbosity = 0;
+    for (int i=0 ; i<n ; i++) {
+        fprintf(stderr, "\nGame %d", i+1);
+        ret = gtp_clear_board(game, &tree);
+        k = npasses = 0;
+        do {
+            if (k%10 == 0) {
+                if (k%50 == 0) fprintf(stderr, "\n");
+                else fprintf(stderr, " ");
+            }
+            fprintf(stderr, ".");
+            k++;
+            if (board_color_to_play(game->pos) == BLACK)
+                ret = gtp_genmove(game,"b", &tree, owner_map, score_count);
+            else
+                ret = gtp_genmove(game,"w", &tree, owner_map, score_count);
+            if (strcmp(ret,"pass")==0)
+                npasses++;
+            else
+                npasses = 0;
+        } while(npasses < 2 && strcmp(ret,"resign")!=0);
+        fprintf(stderr,"\n");
+        sprintf(filename, "game_%4.4d.sgf", i+1);
+        gtp_storesgf(game, filename);
+    }
+}
+
 void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
 // Loop that process the gtp commands send by the controller
 {
@@ -715,7 +749,7 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         if (strcmp(command, "play")==0)
             ret = gtp_play(game, arg1);
         else if (strcmp(command, "genmove") == 0)
-            ret = gtp_genmove(game, arg1, tree, owner_map, score_count);
+            ret = gtp_genmove(game, arg1, &tree, owner_map, score_count);
         else if (strcmp(command, "time_left") == 0)
             ret = gtp_time_left(game, arg1);
         else if (strcmp(command, "cputime") == 0)
@@ -748,12 +782,12 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
             ret = known_commands;
         else if (strcmp(command,"kgs-genmove_cleanup") == 0) {
             play_until_the_end = 1;
-            ret = gtp_genmove(game, arg1, tree, owner_map, score_count);
+            ret = gtp_genmove(game, arg1, &tree, owner_map, score_count);
         }
         else if (strcmp(command,"known_command") == 0)
             ret = gtp_known_command(known_commands, arg1);
         else if (strcmp(command,"komi") == 0)
-            ret = gtp_komi(pos, arg1);
+            ret = gtp_komi(game, arg1);
         else if (strcmp(command,"loadsgf") == 0)
             ret = gtp_loadsgf(game, arg1);
         else if (strcmp(command,"list_commands") == 0)
@@ -902,6 +936,8 @@ int michi_console(int argc, char *argv[])
     }
     else if (strcmp(command,"defaults") == 0)
         make_params_default(stdout);
+    else if (strcmp(command,"selfplay") == 0)
+        selfplay(50, game, owner_map, score_count);
     else
         usage();
 

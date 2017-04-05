@@ -116,7 +116,7 @@ Point read_ladder_attack(Position *pos, Point pt, Slist libs)
 // Actually, this is a general 2-lib capture exhaustive solver.
 {
     char *ret;
-    Point moves[5];   // 4 points should be enough ...
+    Point moves[100];
     Point l1, l2, move=PASS_MOVE;
 
     // always play on the liberty that has 3 neighbors EMPTY

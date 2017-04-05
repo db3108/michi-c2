@@ -550,7 +550,7 @@ update_libs:
 
 //===================================== Moves =================================
 Position* new_position()
-// Return a position with size of board initialized
+// Return a position with size of board and komi initialized
 {
     Position *pos = michi_malloc(sizeof(Position));
     pos->size = N;
@@ -561,9 +561,10 @@ Position* new_position()
 char* empty_position(Position *pos)
 // Reset pos to an initial empty board position
 {
+    float komi = komi = pos->komi;
     int k = 0, size = pos->size;
     memset(pos, 0, sizeof(Position));
-    pos->size = size;
+    pos->size = size; pos->komi = komi;
     for (int row=0 ; row <= (N-size) ; row++)
         for (int col=0 ; col<=N ; col++) pos->color[k++] = OUT;
     for (int row=N-size+1 ; row<=N ; row++) {
@@ -578,7 +579,6 @@ char* empty_position(Position *pos)
         pos->env4d[pt] = compute_env4(pos, pt, 4);
     }
 
-    pos->komi = 7.5;
     pos->to_play = BLACK;
     //assert(env4_OK(pos));
     return "";              // result OK
