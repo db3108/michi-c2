@@ -4,7 +4,7 @@ User Manual for michi-c
 
 Denis Blumstein
 
-Revision : 1.4
+Revision : 1.4.2
 
 1. Introduction
 ***************
@@ -563,6 +563,7 @@ it will write a simple usage message::
        * mcdebug     run a series of playouts (verbose, nb of sims as above)
        * tsdebug     run a series of tree searches
        * defaults    write a template of config file on stdout (defaults values)
+       * selfplay    run a sequence of self play games
     and
        * config.gtp  an optional file containing gtp commands
 
@@ -615,5 +616,5 @@ commands placed in the config.gtp file will be executed at initialization.
 This feature can be used to modify the default parameters or for example to 
 load a given position from a SGF file.
 
-The three other modes **mcbenchmark**, **mcdebug** or **tsdebug** are, as their
-name suggest useful only for debugging and benchmarking.
+The three other modes **mcbenchmark**, **mcdebug**, **tsdebug** or **selfplay**
+are, as their name suggest useful mainly for debugging and benchmarking.

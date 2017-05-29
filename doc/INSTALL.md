@@ -57,6 +57,9 @@ and you will get a message that you can ignore
 2 Installing on other systems
 =============================
 
+This version has been verified to work on Windows Seven 64 bits under mingw.
+The same procedure as for UNIX/Linux should work for you.
+
 3 Download the large patterns definitions
 =========================================
 

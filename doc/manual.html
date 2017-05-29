@@ -3,13 +3,13 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.13.1: http://docutils.sourceforge.net/" />
 <title>User Manual for michi-c</title>
 <style type="text/css">
 
 /*
 :Author: David Goodger (goodger@python.org)
-:Id: $Id: html4css1.css 7614 2013-02-21 15:55:51Z milde $
+:Id: $Id: html4css1.css 7952 2016-07-26 18:15:59Z milde $
 :Copyright: This stylesheet has been placed in the public domain.
 
 Default cascading style sheet for the HTML output of Docutils.
@@ -36,6 +36,14 @@ table.borderless td, table.borderless th {
 
 .hidden {
   display: none }
+
+.subscript {
+  vertical-align: sub;
+  font-size: smaller }
+
+.superscript {
+  vertical-align: super;
+  font-size: smaller }
 
 a.toc-backref {
   text-decoration: none ;
@@ -161,18 +169,23 @@ h2.subtitle {
 hr.docutils {
   width: 75% }
 
-img.align-left, .figure.align-left, object.align-left {
+img.align-left, .figure.align-left, object.align-left, table.align-left {
   clear: left ;
   float: left ;
   margin-right: 1em }
 
-img.align-right, .figure.align-right, object.align-right {
+img.align-right, .figure.align-right, object.align-right, table.align-right {
   clear: right ;
   float: right ;
   margin-left: 1em }
 
 img.align-center, .figure.align-center, object.align-center {
   display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+table.align-center {
   margin-left: auto;
   margin-right: auto;
 }
@@ -193,6 +206,15 @@ div.align-right {
 
 /* div.align-center * { */
 /*   text-align: left } */
+
+.align-top    {
+  vertical-align: top }
+
+.align-middle {
+  vertical-align: middle }
+
+.align-bottom {
+  vertical-align: bottom }
 
 ol.simple, ul.simple {
   margin-bottom: 1em }
@@ -342,7 +364,7 @@ ul.auto-toc {
 <h1 class="title">User Manual for michi-c</h1>
 
 <p>Denis Blumstein</p>
-<p>Revision : 1.4</p>
+<p>Revision : 1.4.2</p>
 <div class="section" id="introduction">
 <h1>1. Introduction</h1>
 <p>Michi-c is a <em>Go gtp engine</em>. This means that</p>
@@ -841,6 +863,7 @@ where mode =
    * mcdebug     run a series of playouts (verbose, nb of sims as above)
    * tsdebug     run a series of tree searches
    * defaults    write a template of config file on stdout (defaults values)
+   * selfplay    run a sequence of self play games
 and
    * config.gtp  an optional file containing gtp commands
 </pre>
@@ -886,8 +909,8 @@ you can use as the optional parameter (config.gtp).</p>
 commands placed in the config.gtp file will be executed at initialization.</p>
 <p>This feature can be used to modify the default parameters or for example to
 load a given position from a SGF file.</p>
-<p>The three other modes <strong>mcbenchmark</strong>, <strong>mcdebug</strong> or <strong>tsdebug</strong> are, as their
-name suggest useful only for debugging and benchmarking.</p>
+<p>The three other modes <strong>mcbenchmark</strong>, <strong>mcdebug</strong>, <strong>tsdebug</strong> or <strong>selfplay</strong>
+are, as their name suggest useful mainly for debugging and benchmarking.</p>
 </div>
 </div>
 </body>
