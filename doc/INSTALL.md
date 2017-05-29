@@ -1,6 +1,6 @@
 
-1. Installing on Linux/Unix
-===========================
+1 Installing on Linux/Unix
+==========================
 
 When in the directory that contains michi.c and Makefile, just type the command (whithout the $ sign)
 
@@ -54,11 +54,11 @@ and you will get a message that you can ignore
 *files tests/ref/tsdebug.txt and tests/tst/tsdebug.txt differ*
 
 
-2. Installing on other systems
-==============================
+2 Installing on other systems
+=============================
 
-3. Download the large patterns definitions
-==========================================
+3 Download the large patterns definitions
+=========================================
 
 One important thing is to download the Michi large-scale pattern files 
 (patterns.prob.xz, patterns.spat.xz) that Petr Baudis provides at :
@@ -68,8 +68,8 @@ http://pachi.or.cz/michi-pat/
 Unpack them and place them (or a link to them) in the working directory 
 where you run michi-c, otherwise it will be much weaker.
 
-4. Troubleshooting
-==================
+4 Troubleshooting
+=================
 
 4.1 Problems with compilation
 -----------------------------
@@ -116,7 +116,7 @@ michi_assert()) and compile without defining the variable NDEBUG.
 Note: the execution time is now much much longer ...
 This is the reason why I have commented these lines in order to avoid mistakes.
 
-4.2 Problems with the tests of the random playouts and tree search
+4.3 Problems with the tests of the random playouts and tree search
 ------------------------------------------------------------------
 
 Nothing special to say except that the code is deterministic and it should give

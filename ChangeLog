@@ -2,7 +2,17 @@
 -- ChangeLog for the michi-c program --
 ---------------------------------------
 
-1.4.1 Released ???
+1.4.2 Released May, 28 2017
+- avoid avoid redondant fix_atari tests in mcplayout (small speed improvement)
+- handle seki in the tree
+- add a new mode : selfplay
+- new tests (very simple tsumegos)
+- check gtp command parameters
+- sgf.c : decode a few new properties, detect if input is not a SGF file
+- it is now possible to read a series of sgf files
+- bugs corrections
+
+1.4.1 Released February, 28 2016
 - respect the Superko rule (Positional)
 - add storesgf gtp command
 - add estimated best reply in the log

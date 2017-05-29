@@ -19,12 +19,6 @@ Version 1.4 has many new features
 - plays handicap games with dynamic komi (linear)
 - some speed improvements
 
-*Near future*
-
-- version 1.4.1 will correct some bugs and add a few missing functions 
-  (Superko, writesgf)
-- version 1.4.2 will be a general cleanup bug fix release
-
 For more details see the ChangeLog.
 
 The current version is able to play on CGOS. A README file and example 
