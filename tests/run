@@ -9,3 +9,4 @@ $GOGUI_REGRESS "./michi gtp" -output tests/output $1 tests/fix_atari.tst
 $GOGUI_REGRESS "./michi gtp" -output tests/output $1 tests/large_pat.tst 
 $GOGUI_REGRESS "./michi gtp" -output tests/output $1 tests/board.tst 
 $GOGUI_REGRESS "./michi gtp" -output tests/output $1 tests/undo.tst 
+$GOGUI_REGRESS "./michi gtp" -output tests/output $1 tests/tsumego.tst 
