@@ -268,7 +268,7 @@ char *gtp_final_score(Game *game, int *owner_map, int *score_count)
 
     compute_all_status(pos, owner_map, score_count, block_status, point_status);
     score = final_score(game, block_status, point_status);
-    if (score.raw > 0.0)
+    if (score.pessimistic > 0.0)
         sprintf(buf,"B+%.1lf", score.pessimistic);
     else
         sprintf(buf,"W+%.1lf", -score.pessimistic);
@@ -469,7 +469,7 @@ char *gtp_set_free_handicap(Game *game, char *str)
             board_set_last3(pos, PASS_MOVE);
             slist_clear(game->moves); slist_push(game->moves, PASS_MOVE);
             game->handicap = slist_size(game->placed_black_stones);
-            board_set_komi(pos, 0.5);
+            game_set_komi(game, 0.5);
             ret = "";       // OK
         }
     }

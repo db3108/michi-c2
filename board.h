@@ -125,8 +125,12 @@ Point  parse_coord(char *s);
 Point  parse_sgf_coord(char *s, int size);
 void   print_board(Position *pos, FILE *f);
 void   ppoint(Point pt);
+void   slist_print_as_point(Slist l);
+void   slist_print_as_int(Slist l);
 char*  slist_str_as_point(Slist l);
 char*  slist_from_str_as_point(Slist l, char *str);
+void   slist_write_as_int(Slist l, FILE *f);
+void   slist_write_as_point(Slist l, FILE *f);
 char*  str_coord(Point pt, char str[5]);
 char*  str_sgf_coord(Point pt, char str[8], int size);
 //-------------------- Functions inlined for performance ----------------------

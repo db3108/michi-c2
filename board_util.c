@@ -161,7 +161,7 @@ char* str_coord(Point pt, char str[8])
 void ppoint(Point pt) {
     char str[8];
     str_coord(pt,str);
-    fprintf(stderr,"%s\n",str);
+    printf("%s\n",str);
 }
 
 Point parse_sgf_coord(char *s, int size)
@@ -204,6 +204,28 @@ char* slist_str_as_point(Slist l) {
         strcat(buf, s);
     }
     return buf;
+}
+
+void slist_write_as_int(Slist l, FILE *f) 
+{
+    fprintf(f, "%s", slist_str_as_int(l));
+}
+
+void slist_write_as_point(Slist l, FILE *f) 
+{
+    fprintf(f, "%s", slist_str_as_point(l));
+}
+
+void slist_print_as_int(Slist l)
+{
+    slist_write_as_int(l, stdout);
+    printf("\n");
+}
+
+void slist_print_as_point(Slist l)
+{
+    slist_write_as_point(l, stdout);
+    printf("\n");
 }
 
 char* slist_from_str_as_point(Slist l, char *str)

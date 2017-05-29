@@ -24,6 +24,14 @@ extern double PROB_SSAREJECT, PROB_RSAREJECT;
 extern double RESIGN_THRES, FASTPLAY20_THRES, FASTPLAY5_THRES;
 //------------------------------- Data Structures -----------------------------
 typedef struct {
+    char    name[2][32];    // players name 
+    char    rank[2][4];     // players rank
+    char    rules[32];      // rules  as read in the sgf 
+    char    result[32];     // result as read in the sgf (ex: W+Time, W+1.5)
+    char    overtime[32];   // overtime as read in the sgf
+} GameInfo;
+
+typedef struct {
     Position *pos;
     int      handicap;
     float    komi;
@@ -31,6 +39,7 @@ typedef struct {
     int      time_left;          // main time left: maintained internally
     int      time_left_gtp;      // main time left: provided   by time_left
     int      time_init;          // main time: initialized     by time_settings
+    GameInfo gi;
     Point    moves[MAX_GAME_LEN];
     Point    placed_black_stones[BOARDSIZE];
     Point    placed_white_stones[BOARDSIZE];
@@ -115,6 +124,7 @@ char*  make_list_pat_matching(Point pt, int verbose);
 void   init_large_patterns(const char *prob, const char *spat);
 void   log_hashtable_synthesis();
 double large_pattern_probability(Point pt);
+void   init_zobrist_hashdata(void);
 //---------------------------- Functions in sgf.c -----------------------------
 Game*  new_game(Position *pos);
 void   free_game(Game *game);
@@ -129,6 +139,24 @@ char*  storesgf(Game *game, const char *filename, const char* version);
 void   display_live_gfx(Position *pos, TreeNode *tree,
                                                      int owner_map[BOARDSIZE]);
 void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[]);
+//-------------------- Functions inlined for simplicity -----------------------
+__INLINE__ int   game_handicap(Game *game) { return game->handicap;}
+__INLINE__ float game_komi(Game *game) { return game->pos->komi;}
+__INLINE__ float game_main_time(Game *game) { return game->time_init;}
+__INLINE__ char* game_name(Game *game, Color c) { return game->gi.name[c&1];}
+__INLINE__ char* game_overtime(Game *game) { return game->gi.overtime;}
+__INLINE__ char* game_rank(Game *game, Color c) { return game->gi.rank[c&1];}
+__INLINE__ char* game_result(Game *game) { return game->gi.result;}
+__INLINE__ char* game_rules(Game *game) { 
+    if (strlen(game->gi.rules)==3)
+        return game->gi.rules;
+    else if (strcmp(game->gi.rules,"Japanese")==0)
+        return "JPN";
+    else if (strcmp(game->gi.rules,"Chinese")==0)
+        return "CHN";
+    else 
+        return "???";
+}
 //-------------------- Functions inlined for performance ----------------------
 __INLINE__ int  is_time_limited(Game *game) {return game->time_init >0;}
 

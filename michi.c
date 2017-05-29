@@ -119,7 +119,7 @@ Point read_ladder_attack(Position *pos, Point pt, Slist libs)
     Point moves[100];
     Point l1, l2, move=PASS_MOVE;
 
-    // always play on the liberty that has 3 neighbors EMPTY
+    // always play first on the liberty that has 3 neighbors EMPTY
     if (point_nlibs(pos, libs[1]) == 3) {
         l2 = libs[1];
         goto process_l2;
@@ -334,9 +334,13 @@ int gen_playout_moves_capture(Position *pos, Slist heuristic_set, float prob,
     Point move2[20], size2[20];
 
     slist_clear(moves); slist_clear(sizes);
-    if (random_int(10000) <= prob*10000.0)
+    if (random_int(10000) <= prob*10000.0) {
+        mark_init(already_suggested);
         FORALL_IN_SLIST(heuristic_set, pt)
             if (point_is_stone(pos, pt)) {
+                Block b = point_block(pos, pt);
+                if (is_marked(already_suggested, b)) continue;
+                mark(already_suggested, b);
                 fix_atari(pos, pt, SINGLEPT_NOK, TWOLIBS_TEST,
                                                 twolib_edgeonly, move2, size2);
                 k=1;
@@ -344,6 +348,8 @@ int gen_playout_moves_capture(Position *pos, Slist heuristic_set, float prob,
                     if (slist_insert(moves, move))
                         slist_push(sizes, size2[k++]);
             }
+        mark_release(already_suggested);
+    }
     return slist_size(moves);
 }
 
@@ -473,6 +479,9 @@ Point choose_capture_move(Position *pos,Slist heuristic_set,float prob,int disp)
         mark_init(already_suggested);
         FORALL_IN_SLIST(heuristic_set, pt)
             if (point_is_stone(pos, pt)) {
+                Block b = point_block(pos, pt);
+                if (is_marked(already_suggested, b)) continue;
+                mark(already_suggested, b);
                 fix_atari(pos, pt, SINGLEPT_NOK, TWOLIBS_TEST,
                                                 twolib_edgeonly, moves, sizes);
                 slist_shuffle(moves);
@@ -485,7 +494,7 @@ Point choose_capture_move(Position *pos,Slist heuristic_set,float prob,int disp)
 }
 
 double playout_score(Position *pos, int owner_map[], int score_count[2*N*N+1])
-// compute score for to-play player; this assumes a final position with all 
+// compute score (>0 if BLACK wins); this assumes a final position with all 
 // dead stones captured and only single point eyes on the board ...
 {
     double s1;
@@ -505,10 +514,7 @@ double playout_score(Position *pos, int owner_map[], int score_count[2*N*N+1])
     }
     s1 = s;
     score_count[s + N*N]++;
-    if (board_color_to_play(pos) == BLACK) 
-        return s1 - board_komi(pos) - board_delta_komi(pos);
-    else
-        return -s1 + board_komi(pos) + board_delta_komi(pos);
+    return s1 - board_komi(pos) - board_delta_komi(pos);
 }
 
 double mcplayout(Position *pos, int amaf_map[], int owner_map[],
@@ -517,12 +523,13 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[],
 // player at the starting position; amaf_map is board-sized scratchpad recording// who played at a given position first
 {
     double s=0.0;
-    int    passes=0, start_color=board_color_to_play(pos);
+    int    passes=0;
     Point  last_moves_neighbors[20], moves[BOARDSIZE], move;
     if(disp) {
         disp_ladder = 1;
         fprintf(stderr, "** SIMULATION **\n");
     }
+    if (board_nmoves(pos)>0 && board_last_move(pos)==0) passes=1;
 
     while (passes < 2 && board_nmoves(pos) < MAX_GAME_LEN) {
         michi_assert(pos, all_blocks_OK(pos));
@@ -543,9 +550,14 @@ double mcplayout(Position *pos, int amaf_map[], int owner_map[],
 
         // 3x3 patterns heuristic suggestions
         if (gen_playout_moves_pat3(pos, last_moves_neighbors,
-                                           PROB_HEURISTIC_PAT3, moves))
-            if((move=choose_from(pos, moves, "pat3", disp)) != PASS_MOVE) 
+                                           PROB_HEURISTIC_PAT3, moves)) {
+            mark_init(already_suggested);
+            if((move=choose_from(pos, moves, "pat3", disp)) != PASS_MOVE) {
+                mark_release(already_suggested);
                 goto found;
+            }
+            mark_release(already_suggested);
+        }
             
         int x0 = random_int(N) + 1, y0 = random_int(N) + 1;
         move = choose_random_move(pos, y0*(N+1) + x0 , disp);
@@ -563,7 +575,6 @@ found:
         //print_pos(pos, stderr, 0);
     }
     s = playout_score(pos, owner_map, score_count);
-    if (start_color != board_color_to_play(pos)) s = -s;
     return s;
 }
 //========================== Montecarlo tree search ===========================
@@ -674,11 +685,12 @@ void expand(Position *pos, TreeNode *tree)
         undo_move(&pos2);
     }
 
-    if (tree->nchildren == 0) {
-        // No possible move, add a pass move
-        tree->children[0] = new_tree_node();
-        tree->children[0]->move = PASS_MOVE;
-        tree->nchildren = 1;
+    if (tree->nchildren <= 2) {
+        int nc = tree->nchildren;
+        // add a pass move. Useful, for example in case of seki
+        tree->children[nc] = new_tree_node();
+        tree->children[nc]->move = PASS_MOVE;
+        tree->nchildren = nc+1;
     }
 }
 
@@ -711,6 +723,34 @@ double winrate(TreeNode *node)
     if (node->v>0) wr = (double) node->w / (double) node->v;
     else           wr = -0.1;
     return wr;
+}
+
+void find_two_most_visited_children(TreeNode *tree, TreeNode **bests, int *v)
+// find the two children that have been most visited
+{
+    int vmax=-1, vmax2=-1;
+    TreeNode *c=NULL, *c2=NULL;
+
+    if (tree->children != NULL) {
+        for (TreeNode **child = tree->children ; *child != NULL ; child++) {
+            if ((*child)->v > vmax2) {
+                if ((*child)->v > vmax) {
+                    vmax2 = vmax;
+                    c2 = c;
+                    vmax = (*child)->v;
+                    c = *child;
+                }
+                else {
+                    vmax2 = (*child)->v;
+                    c2 = *child;
+                }
+            }
+        }
+    }
+    bests[0] = c;
+    bests[1] = c2;
+    v[0] = vmax;
+    v[1] = vmax2; 
 }
 
 TreeNode* best_move(TreeNode *tree, TreeNode **except)
@@ -800,9 +840,12 @@ void tree_update(Position *pos, TreeNode **nodes, int last
                                     , int amaf_map[], double score, int disp)
 // Store simulation result in the tree (nodes is the tree path)
 {
-    int nmove = board_nmoves(pos) + last;
-
-    for (int k=last ; k>=0 ; k--) {     // walk nodes from leaf to the root
+    int amaf_map_value = 1;
+    if (board_color_to_play(pos) == WHITE) {
+        amaf_map_value = -1;
+        score = -score;  // score > 0 means the player in the first node wins
+    }
+    for (int k=0 ; k<=last ; k++) {
         TreeNode *n= nodes[k];
         if(disp) {
             char str[8]; str_coord(n->move, str);
@@ -813,8 +856,6 @@ void tree_update(Position *pos, TreeNode **nodes, int last
         
         // Update the node children AMAF stats with moves we made 
         // with their color
-        int amaf_map_value = (nmove %2 == 0 ? 1 : -1);
-        nmove--;
         if (n->children != NULL) {
             for (TreeNode **child = n->children ; *child != NULL ; child++) {
                 if ((*child)->move == 0) continue;
@@ -830,6 +871,7 @@ void tree_update(Position *pos, TreeNode **nodes, int last
             }
         }
         score = -score;
+        amaf_map_value = -amaf_map_value;
     }
 }
 
@@ -887,17 +929,17 @@ Point tree_search(Position *pos, TreeNode *tree, int n, int owner_map[],
 // Perform MCTS search from a given position for a given number of iterations
 {
     double s;
-    int *amaf_map=michi_calloc(BOARDSIZE, sizeof(int)), i, last; 
+    int *amaf_map=michi_calloc(BOARDSIZE, sizeof(int)), i, last, visit[2]; 
     Point    bestmove;
     Position *workpos=michi_malloc(sizeof(Position));
-    TreeNode *best, *nodes[500];
+    TreeNode *best, *bests[2], *nodes[500];
 
     // Initialize the root node if necessary
     if (tree->children == NULL) expand(pos, tree);
 
     int live_gfx = strcmp(Live_gfx,"None") != 0;
 
-    for (i=0 ; i<n ; i++) {
+    for (i=0 ; i<n/2 ; i++) {
         if (live_gfx && (i % Live_gfx_interval) == Live_gfx_interval-1)
             display_live_gfx(pos, tree, owner_map);
 
@@ -920,10 +962,31 @@ Point tree_search(Position *pos, TreeNode *tree, int n, int owner_map[],
             update_speed();
             goto finished;
         }
+    } 
+
+    for ( ; i<n ; i++) {
+        if (live_gfx && (i % Live_gfx_interval) == Live_gfx_interval-1)
+            display_live_gfx(pos, tree, owner_map);
+        *workpos = *pos;
+        memset(amaf_map, 0, BOARDSIZE*sizeof(int));
+        if (i>0 && i % REPORT_PERIOD == 0) 
+            print_tree_summary(tree, i, stderr); 
+        last = tree_descend(workpos, tree, amaf_map, disp, nodes);
+        s = mcplayout(workpos, amaf_map, owner_map, score_count, disp);
+        tree_update(pos, nodes, last, amaf_map, s, disp);
+
+        find_two_most_visited_children(tree, bests, visit);
+        //printf("%d %d %d %d  %.4lf %.4lf\n", i, n, visit[0], visit[1]
+        //                        , winrate(bests[0]), winrate(bests[1]));
+        if (visit[1] + n - i < visit[0]) { 
+            sprintf(buf, "early abort save %d / %d simulations", n-i, n);
+            log_fmt_s('S', buf, NULL);
+            break;          // 2nd most visited child will not be able to win
+        }
     }
 
     best = best_move(tree, NULL);
-    collect_infos(tree, n, best, nodes, pos);
+    collect_infos(tree, i, best, nodes, pos);
 
 finished:
     if (verbosity > 0) {
@@ -970,13 +1033,18 @@ void dump_node(TreeNode *node, FILE *f)
 {
     char str[8];
     int k=1;
+    fprintf(f,"child move   winrate      prior       rave      urgency nch\n");
+    fprintf(f,"self  %4s %5d/%-5d %5d/%-5d %5d/%-5d %8.5lf %3d\n"
+            , str_coord(node->move,str)
+            , node->w, node->v, node->pw,node->pv, node->aw,node->av
+            , rave_urgency(node), node->nchildren);
     if (node->nchildren) {
         for (TreeNode **c = node->children ; *c != NULL ; c++) {
             TreeNode*n = *c;
-            fprintf(f,"%3d %3s %5d/%-5d %5d/%-5d %5d/%-5d %d\n"
+            fprintf(f,"%5d %4s %5d/%-5d %5d/%-5d %5d/%-5d %8.5lf %3d\n"
                     , k++, str_coord(n->move,str)
-                    , n->w,n->v, n->pw,n->pv, n->aw,n->av
-                    , n->nchildren);
+                    , n->w, n->v, n->pw, n->pv, n->aw, n->av
+                    , rave_urgency(n), n->nchildren);
         }
     }
 }

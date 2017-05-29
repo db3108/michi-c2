@@ -561,7 +561,7 @@ Position* new_position()
 char* empty_position(Position *pos)
 // Reset pos to an initial empty board position
 {
-    float komi = komi = pos->komi;
+    float komi = pos->komi;
     int k = 0, size = pos->size;
     memset(pos, 0, sizeof(Position));
     pos->size = size; pos->komi = komi;

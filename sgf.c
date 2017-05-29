@@ -1,10 +1,10 @@
-// sgf.c -- Read and write SGF files for the michi-c gtp engine
-//          and update the Game structure accordingly
+// sgf.c -- Update the Game structure and import/export it as SGF file
 #include "michi.h"
 
 FILE *f;           // source of the sgf data
 Game *game;        // game in which the sgf file will be written
 int  nmoves;       // number of moves loaded from the sgf file
+Byte size_already_set;
 // Displacements towards the neighbors of a point
 //                      North East South  West  NE  SE  SW  NW
 static int   delta[] = { -N-1,   1,  N+1,   -1, -N,  W,  N, -W};
@@ -15,7 +15,6 @@ Game *new_game(Position *pos)
 {
     Game *game=michi_calloc(1, sizeof(Game));
     game->pos = pos;
-    game->komi = 7.5;       // default value
     game_clear_board(game);
     return game;
 }
@@ -29,19 +28,17 @@ void free_game(Game *game)
 void game_set_komi(Game *game, float komi)
 {
     game->komi = komi;
+    board_set_komi(game->pos, komi);
 }
 
 char* game_clear_board(Game *game) 
 {
-    char *ret;
     game->handicap = 0;
     slist_clear(game->moves);
     slist_clear(game->placed_black_stones);
     slist_clear(game->placed_white_stones);
     game->zhash = 0;
-    ret = empty_position(game->pos);
-    game->pos->komi = game->komi;
-    return ret;
+    return empty_position(game->pos);
 }
 
 int is_game_board_empty(Game *game) 
@@ -54,23 +51,19 @@ int is_game_board_empty(Game *game)
         return 1;
 }
 
-char* board_set_size_safe(Position *pos, char *str)
+void board_set_size_safe(Position *pos, char *str)
 // Set the size of the board with check that it is compatible with compilation
 {
-    char *ret;
     int size = atoi(str);
     if (size > N) {
         sprintf(buf, "Error - Trying to set incompatible boardsize %s"
                      " (max=%d)", str, N);
-        log_fmt_s('W', buf, NULL);
-        ret = buf;
+        log_fmt_s('E', buf, NULL);
     }
     else {
         board_set_size(pos, size);
         empty_position(pos);
-        ret = "";
     }
-    return ret;
 }
 
 void update_zhash(Game *game, Color c, Point pt)
@@ -97,11 +90,9 @@ char* look_for_repetition(Game *game)
 {    
     char *ret="";
     int n=game->pos->n;
-    if (n > 20)
-        for (int k=1 ; k<20 ; k++)
-            if (game->zhash == game->zhistory[n-k]) 
-                ret = "Error - Positional Superko rule violation";
-                //log_fmt_s('E',"Positional Superko rule violation",NULL);
+    for (int k=30 ; k<n ; k++)
+        if (game->zhash == game->zhistory[k]) 
+            ret = "Error - Positional Superko rule violation";
     game->zhistory[n] = game->zhash;
     return ret;
 }
@@ -281,10 +272,12 @@ int  read_raw_text=0;
 
 char* prop_name[] = { "",   "AB", "AW",  "B",  "W",  "C",
                       "FF", "AP", "CA", "SZ", "KM", "DT",
-                      "PL", "HA", "MULTIGOGM", 
+                      "PL", "HA", "MULTIGOGM", "RE", "ST",
                        "N", "AE", "GM", "GN", "US", "GW",
                       "GB", "DM", "UC", "TE", "BM", "DO",
-                      "IT", "PB", "PW", "BR", "WR", "PC",
+                      "IT", "PB", "PW", "BR", "WR", "PC", 
+                      "RU", "TM", "OT", 
+                      "BL", "WL",      // specific to cgos ?
                       NULL };
 #define NOT_FOUND        0
 
@@ -305,6 +298,7 @@ int yylex(void)
         if (c == '\n') lineno++;
 
     if (read_raw_text) {
+        yyleng = 0;
         all_upper=0;
         all_lower=0;
         while ((c=fgetc(f)) != ']') {
@@ -426,12 +420,20 @@ void ValueType(void)
     }
 }
 
+int set_default_size(Position *pos) {
+    board_set_size_safe(pos, "19"); // default value in sgf spec
+    game_clear_board(game);
+    size_already_set = 1;
+    return 19;
+}
+
 void PropValue(void)
 // PropValue = "[" ValueType "]"
 {
     Position *pos=game->pos;
 
     accept('['); 
+    //fprintf(stderr, "%s\n", yytext);
     read_raw_text = 0;  // reset after the raw text has been read (lookahead)
     ValueType();
 
@@ -439,6 +441,8 @@ void PropValue(void)
     int size = board_size(pos);
     if (board_nmoves(pos) < nmoves-1 
         && strcmp(prop_name[prop], "B") == 0) {
+        if (!size_already_set)
+            size = set_default_size(pos);
         if (yytext[0] != 'B')
             do_play(game, BLACK, parse_sgf_coord(yytext, size));
         else
@@ -446,29 +450,32 @@ void PropValue(void)
     }
     else if (board_nmoves(pos) < nmoves-1 
         && strcmp(prop_name[prop], "W") == 0) {
+        if (!size_already_set)
+            size = set_default_size(pos);
         if (yytext[0] != 'W')
             do_play(game, WHITE, parse_sgf_coord(yytext, size));
         else
             do_play(game, WHITE, PASS_MOVE);
     }
     else if (strcmp(prop_name[prop], "AB") == 0) {
+        if (!size_already_set)
+            size = set_default_size(pos);
         Point pt = parse_sgf_coord(yytext, size);
         slist_push(game->placed_black_stones, pt);
         board_place_stone(pos, pt, BLACK);
     }
     else if (strcmp(prop_name[prop], "AW") == 0) {
+        if (!size_already_set)
+            size = set_default_size(pos);
         Point pt = parse_sgf_coord(yytext, size);
         slist_push(game->placed_white_stones, pt);
         board_place_stone(pos, pt, WHITE);
     }
     else if (strcmp(prop_name[prop], "KM") == 0)
-        board_set_komi(pos, atof(yytext));
+        game_set_komi(game, atof(yytext));
     else if (strcmp(prop_name[prop], "SZ") == 0) {
-        char *ret;
         if (is_game_board_empty(game)) { 
-            ret = board_set_size_safe(pos, yytext);
-            strcpy(sgferr, buf);        // save the potential error message
-            if (ret[0] != 0) return;    // early abort
+            board_set_size_safe(pos, yytext);
             game_clear_board(game);
         }
         else {
@@ -479,9 +486,7 @@ void PropValue(void)
             slist_append(bstones, game->placed_black_stones);
             slist_append(wstones, game->placed_white_stones);
 
-            ret = board_set_size_safe(pos, yytext);
-            strcpy(sgferr, buf);        // save the potential error message
-            if (ret[0] != 0) return;    // early abort
+            board_set_size_safe(pos, yytext);
             game_clear_board(game);
             
             FORALL_IN_SLIST(bstones, pt) {
@@ -495,13 +500,32 @@ void PropValue(void)
                 slist_push(game->placed_white_stones, pt);
             }
         }
+        size_already_set = 1;
     }
+    else if (strcmp(prop_name[prop], "HA") == 0)
+        game->handicap = atoi(yytext);
+    else if (strcmp(prop_name[prop], "OT") == 0)
+        strncpy(game->gi.overtime,yytext,31);
     else if (strcmp(prop_name[prop], "PL") == 0) {
         if (strcmp(yytext, "B") == 0)
             board_set_color_to_play(pos, BLACK);
         else
             board_set_color_to_play(pos, WHITE);
     }
+    else if (strcmp(prop_name[prop], "PW") == 0)
+        strncpy(game->gi.name[WHITE&1],yytext,31);
+    else if (strcmp(prop_name[prop], "PB") == 0)
+        strncpy(game->gi.name[BLACK&1],yytext,31);
+    else if (strcmp(prop_name[prop], "WR") == 0)
+        strncpy(game->gi.rank[WHITE&1],yytext,3);
+    else if (strcmp(prop_name[prop], "BR") == 0)
+        strncpy(game->gi.rank[BLACK&1],yytext,3);
+    else if (strcmp(prop_name[prop], "RE") == 0)
+        strncpy(game->gi.result,yytext,31);
+    else if (strcmp(prop_name[prop], "RU") == 0)
+        strncpy(game->gi.rules,yytext,31);
+    else if (strcmp(prop_name[prop], "TM") == 0)
+        game->time_init = atoi(yytext);
 
     accept(']');
 }
@@ -518,15 +542,19 @@ void PropValues(void)
 
 void PropIdent(void)
 {
+    int will_read_raw_text = 0;
     if (symbol == UPPERCASE_STRING) {
         prop = yyval;
-        if (strcmp(yytext,"C")==0)
-            read_raw_text = 1;          // will be reset by PropValue
+        if (strcmp(yytext,"C")==0 || strcmp(yytext,"PC")==0)
+            will_read_raw_text = 1;  // raw text after '['
         //if (yyval > 0 ) 
         //    fprintf(stderr, "prop %s: ",  yytext);
         //else
         //    fprintf(stderr, "unknown %s: ",  yytext);
+        if (yyval <=0 )
+            log_fmt_s('W',"read unknown property %s in sgf file", yytext);
         accept(UPPERCASE_STRING);
+        read_raw_text = will_read_raw_text;       // will be reset by PropValue
     }
 }
 
@@ -577,9 +605,12 @@ void RestOfCollection(void);
 void GameTree(void)
 // GameTree = "(" Sequence RestOfCollection ")"
 {
-    accept('('); Sequence(); 
-    if (sgferr[0] !=0) return;    // early abort
-    RestOfCollection(); accept(')');
+    accept('('); 
+    Sequence(); 
+    if (sgferr[0] !=0)
+        return;    // early abort
+    RestOfCollection(); 
+    accept(')');
 }
 
 void RestOfCollection(void)
@@ -600,6 +631,14 @@ void Collection(void)
     RestOfCollection();
 }
 
+void check_sgf_validity(const char *filename)
+{
+    char c1=fgetc(f), c2=fgetc(f);
+    if (c1 != '(' || c2 != ';')
+        log_fmt_s('E', "File %s does not seem to be a SGF file", filename);
+    ungetc(c2, f); ungetc(c1, f);
+}
+
 char *loadsgf(Game *sgf_game, const char *filename, int sgf_nmoves)
 // Load a position from the SGF file filename using a recursive parser for the
 // SGF grammar which is described above. See ref [1].
@@ -614,7 +653,11 @@ char *loadsgf(Game *sgf_game, const char *filename, int sgf_nmoves)
 
     game_clear_board(game);
     sgferr[0] = 0;
+    lineno = 1;
+    buf[0] = 0;
+    size_already_set = 0;
     if (f != NULL) {
+        check_sgf_validity(filename);
         symbol = yylex();
         Collection();
         assert(symbol == '\n' || symbol == EOF);

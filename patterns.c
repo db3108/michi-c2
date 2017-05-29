@@ -654,8 +654,12 @@ void init_large_patterns(const char *prob, const char *spat)
     }
     if (verbosity > 0 && (fprob == NULL || fspat == NULL)) {
         fprintf(stderr, "Warning: michi cannot load pattern files, "
-                "It will be much weaker. "
-                "Consider lowering EXPAND_VISITS %d->2\n", EXPAND_VISITS);
+                "It will be much weaker. ");
+        if (EXPAND_VISITS > 2)
+            fprintf(stderr, "Consider lowering EXPAND_VISITS %d->2\n",
+                    EXPAND_VISITS);
+        else
+            fprintf(stderr,"\n");
     }
     log_fmt_s('I', "=========== Hashtable initialization synthesis ==========",
                                                                          NULL);
