@@ -6,7 +6,7 @@ void expand(Position *pos, TreeNode *tree);
 Point        allpoints[BOARDSIZE];
 
 static int   game_ongoing=1, i;
-static char* version = "1.4";
+static char* version = "1.4.2";
 
 void usage() {
     fprintf(stderr, "\n\n"
@@ -88,17 +88,41 @@ char* gogui_analyze_commands(void)
 }
 
 Color get_color(char *str_color) {
+    if (str_color != NULL) {
+        buf[0] = 0;
+        char c = toupper(*str_color);
+        if (c != 'B' && c != 'W')
+            sprintf(buf, "Error - Invalid color \"%s\"", str_color);
+        return (c == 'B') ? BLACK : WHITE;
+    }
+    else {
+        sprintf(buf, "Error - Missing color \"%s\"", str_color);
+        return OUT;
+    }
+}
+
+Point read_next_point(void)
+{
+    char *str = strtok(NULL, " \t\n");
+
     buf[0] = 0;
-    char c = toupper(*str_color);
-    if (c != 'B' && c != 'W')
-        sprintf(buf, "Error - Invalid color \"%s\"", str_color);
-    return (c == 'B') ? BLACK : WHITE;
+    if (str == NULL) {
+        sprintf(buf, "Error - Missing point");
+        return PASS_MOVE;
+    }
+    Point pt = parse_coord(str);
+    if (pt == INVALID_VERTEX) {
+        sprintf(buf, "Error - Invalid vertex \"%s\"", str);
+        return PASS_MOVE;
+    }
+    return pt;
 }
 
 char *read_next_color_point_pair(char **strp, Point *pt) 
 {
-    char *str, *str2;
+    char *str;
 
+    buf[0] = 0;
     str = strtok(NULL, " \t\n");
     if (str != NULL) {
         *str = toupper(*str);
@@ -106,16 +130,8 @@ char *read_next_color_point_pair(char **strp, Point *pt)
             sprintf(buf, "Error - Invalid color \"%s\"", str);
             goto error;
         }
-        str2 = strtok(NULL, " \t\n");
-        if (str2 == NULL) {
-            sprintf(buf, "Error - Missing point");
-            goto error;
-        }
-        *pt = parse_coord(str2);
-        if (*pt == INVALID_VERTEX) {
-            sprintf(buf, "Error - Invalid vertex \"%s\"", str2);
-            goto error;
-        }
+        *pt = read_next_point();
+        if (buf[0] !=0) goto error;
     }
     *strp = str;
     return "";      // a new pair (color, point) has been read in memory
@@ -124,50 +140,54 @@ error:
     return buf;
 }
 
-char* gogui_play_sequence(Game *game)
+char* gogui_play_sequence(Game *game, char *str)
 {
-    char *ret, *str_color;
+    char *ret=0, *str_color;
     Point pt;
 
-    ret = read_next_color_point_pair(&str_color, &pt);
-    while (str_color != NULL) {
-        Color c = get_color(str_color);
-        if (buf[0] != 0) {
-            ret = buf;
-            break;
-        }
-        ret = do_play(game, c, pt);
-        if (ret[0] != 0)
-            break;
-        else
-            game_ongoing = 1;
-        ret = read_next_color_point_pair(&str_color, &pt);
+    get_color(str);             // just to check color validity
+    if (buf[0] != 0) return buf;
+    if (str != NULL) {
+        str_color = str;
+        pt = read_next_point();
+        if (buf[0] != 0) return buf;
+
+        do {
+            Color c = get_color(str_color);
+            if (buf[0] != 0) return buf;
+            ret = do_play(game, c, pt);
+            if (ret[0] != 0) break;
+            else
+                game_ongoing = 1;
+            ret = read_next_color_point_pair(&str_color, &pt);
+        } while (str_color != NULL);
     }
     return ret;
 }
 
-char* gogui_setup(Game *game)
+char* gogui_setup(Game *game, char *str)
 {
-    char *ret, *str;
+    char *ret=0;
     Point pt;
     Position *pos=game->pos;
 
     if (is_game_board_empty(game)) {
-        ret = read_next_color_point_pair(&str, &pt);
-        while (str != 0) {
+        get_color(str);             // just to check color validity
+        if (buf[0] != 0) return buf;
+        pt = read_next_point();
+        if (buf[0] != 0) return buf;
+
+        do {
             if (strcmp(str,"B") == 0) {
                 slist_push(game->placed_black_stones, pt);
-                board_set_color_to_play(pos, BLACK);
-                ret = play_move(pos, pt);
+                board_place_stone(pos, pt, BLACK);
             }
             else {
                 slist_push(game->placed_white_stones, pt);
-                board_set_color_to_play(pos, WHITE);
-                ret = play_move(pos, pt);
+                board_place_stone(pos, pt, WHITE);
             }
-            if (ret[0] != 0) break;
             ret = read_next_color_point_pair(&str, &pt);
-        }
+        } while (str != 0);
         if (ret[0] == 0) {
             board_set_color_to_play(pos, BLACK);
             board_set_nmoves(pos, 0); 
@@ -189,22 +209,17 @@ char* gogui_setup_player(Game *game, char *str)
     Position *pos=game->pos;
 
     if (board_nmoves(pos) == 0) {
-        if (str != NULL) {
-            *str = toupper(*str);
-            if (strcmp(str,"B") == 0) 
-                board_set_color_to_play(pos, BLACK);
-            else if (strcmp(str,"W") == 0) {
-                board_set_color_to_play(pos, WHITE);
-                board_set_nmoves(pos, 1); 
-                slist_push(game->moves, PASS_MOVE);
-            }
-            else {
-                sprintf(buf, "Error - Invalid color \"%s\"", str);
-                ret = buf;
-            }
+        Color c = get_color(str);
+        if (c == BLACK) 
+            board_set_color_to_play(pos, BLACK);
+        else if (c == WHITE) {
+            board_set_color_to_play(pos, WHITE);
+            board_set_nmoves(pos, 1); 
+            slist_push(game->moves, PASS_MOVE);
         }
         else {
-            ret = "Error - Missing color";
+            sprintf(buf, "Error - Invalid color \"%s\"", str);
+            ret = buf;
         }
     }
     else
@@ -771,9 +786,9 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         else if (strcmp(command,"gogui-analyze_commands") == 0)
             ret = gogui_analyze_commands();
         else if (strcmp(command,"gogui-play_sequence") == 0)
-            ret = gogui_play_sequence(game);
+            ret = gogui_play_sequence(game, arg1);
         else if (strcmp(command,"gogui-setup") == 0)
-            ret = gogui_setup(game);
+            ret = gogui_setup(game, arg1);
         else if (strcmp(command,"gogui-setup_player") == 0)
             ret = gogui_setup_player(game, arg1);
         else if (strcmp(command,"gg-undo") == 0)
@@ -793,7 +808,7 @@ void gtp_io(Game *game, FILE *f, FILE *out, int owner_map[], int score_count[])
         else if (strcmp(command,"list_commands") == 0)
             ret = known_commands;
         else if (strcmp(command,"name") == 0)
-            ret = "michi-c";
+            ret = "michi-c2";
         else if (strcmp(command,"owner_map") == 0)
             ret = gtp_owner_map(pos, owner_map);
         else if (strcmp(command,"param_general") == 0)

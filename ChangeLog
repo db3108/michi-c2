@@ -2,7 +2,8 @@
 -- ChangeLog for the michi-c program --
 ---------------------------------------
 
-1.4.2 Released May, 28 2017
+1.4.2 Released May, 31 2017
+- bug correction in gogui-setup and gogui-play_sequence gtp commands
 - avoid avoid redondant fix_atari tests in mcplayout (small speed improvement)
 - handle seki in the tree
 - add a new mode : selfplay

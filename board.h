@@ -27,7 +27,7 @@
     #define MAX_BLOCKS 256
 #endif
 
-#define BUFLEN 256
+#define BUFLEN 4096
 #define INVALID_VERTEX  999
 //------------------------------- Data Structures -----------------------------
 typedef unsigned char Byte;
