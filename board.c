@@ -680,6 +680,10 @@ char* undo_move(Position *pos)
                 compute_block(pos, n, points, libs, BOARDSIZE);
                 Block bn = new_blkid(pos);
                 pos->bsize[bn] = slist_size(points);
+                if (slist_size(points) < 256)
+                    pos->bsize[bn] = slist_size(points);
+                else
+                    pos->bsize[bn] = 255;
                 FORALL_IN_SLIST(points, s)
                     pos->block[s] = bn;
                 FORALL_IN_SLIST(libs, l)

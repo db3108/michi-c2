@@ -899,6 +899,7 @@ int michi_console(int argc, char *argv[])
 
     if (argc < 2)
         usage();
+    init_large_patterns("patterns.prob", "patterns.spat");
     command = argv[1];
     if (argc == 3) {
         // Optional initialization file (contains gtp commands)
@@ -912,7 +913,6 @@ int michi_console(int argc, char *argv[])
             exit(-1);
         }
     }
-    init_large_patterns("patterns.prob", "patterns.spat");
 
     // Execution 
     if (strcmp(command,"gtp") == 0)
