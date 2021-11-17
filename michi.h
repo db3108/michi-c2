@@ -16,7 +16,7 @@
 // ---------------------------- MCTS Constants --------------------------------
 extern int   N_SIMS, RAVE_EQUIV, EXPAND_VISITS;
 extern int   PRIOR_EVEN, PRIOR_SELFATARI, PRIOR_CAPTURE_ONE, PRIOR_CAPTURE_MANY;
-extern int   PRIOR_PAT3, PRIOR_LARGEPATTERN, LEN_PRIOR_CFG, PRIOR_EMPTYAREA;
+extern int   PRIOR_PAT3, PRIOR_LARGEPATTERN, LEN_PRIOR_CFG, PRIOR_EMPTYAREA, PRIOR_CORNER;
 extern int   PRIOR_CFG[], LEN_PRIOR_CFG;
 extern int   REPORT_PERIOD;
 extern double PROB_HEURISTIC_CAPTURE, PROB_HEURISTIC_PAT3;
@@ -48,6 +48,7 @@ typedef struct {
 } Game;
 
 typedef struct tree_node { // ------------ Monte-Carlo tree node --------------
+    int depth;      // distance from the root
     int v;          // number of visits
     int w;          // number of wins(expected reward is w/v)
     int pv;         // pv, pw are prior values 

@@ -333,7 +333,8 @@ int gen_playout_moves_capture(Position *pos, Slist heuristic_set, float prob,
     int   k, twolib_edgeonly = !expensive_ok;
     Point move2[20], size2[20];
 
-    slist_clear(moves); slist_clear(sizes);
+    slist_clear(moves); 
+    slist_clear(sizes);
     if (random_int(10000) <= prob*10000.0) {
         mark_init(already_suggested);
         FORALL_IN_SLIST(heuristic_set, pt)
@@ -656,9 +657,35 @@ void expand(Position *pos, TreeNode *tree)
         }
 
         int height = line_height(pt, board_size(pos));  // 0-indexed
-        if (height <= 2 && empty_area(pos, pt, 3)) {
-            // No stones around; negative prior for 1st + 2nd line, positive
-            // for 3rd line; sanitizes opening and invasions
+
+        // Discouaraging moves played "in the air"
+        // - too high and too far from any stones (PK)
+
+        if (height > 6) {
+            if (empty_area(pos, pt, 5)) {
+                node->pv += 100;
+                node->pw += 0;
+            }
+        }
+
+        // Small correction discouraging moves
+        // that are too high or too low (PK)
+
+        if (line_height < 2) {
+            node->pv += 6;
+            node->pw += 0;
+        }
+
+        if (line_height > 5) {
+            node->pv += 2;
+            node->pw += 0;
+        }
+
+        if (height <= 3 && empty_area(pos, pt, 3)) {
+
+            // No stones around; negative prior for 1st + 2nd line, 
+            // positive for 3rd line; smaller positive prior for 4th line 
+            //sanitizes opening and invasions
             if (height <= 1) {
                 node->pv += PRIOR_EMPTYAREA;
                 node->pw += 0;
@@ -667,8 +694,12 @@ void expand(Position *pos, TreeNode *tree)
                 node->pv += PRIOR_EMPTYAREA;
                 node->pw += PRIOR_EMPTYAREA;
             }
+            if (height == 3) {
+                node->pv += PRIOR_EMPTYAREA / 2;
+                node->pw += PRIOR_EMPTYAREA / 2;
+            }
         }
-
+        
         fix_atari(&pos2, pt, SINGLEPT_OK, TWOLIBS_TEST, !TWOLIBS_EDGE_ONLY,
                                                                  moves, sizes);
         if (slist_size(moves) > 0) {
@@ -677,11 +708,24 @@ void expand(Position *pos, TreeNode *tree)
         }
 
         double patternprob = large_pattern_probability(pt);
+        
         if (patternprob > 0.0) {
             double pattern_prior = sqrt(patternprob);       // tone up
-            node->pv += pattern_prior * PRIOR_LARGEPATTERN;
+
+            // moves that are either too low or too high
+            // are considered a slight loss even if they
+            // vonform to the mattern (PK)
+
+            int mul = 100;
+            if (height == 0) mul = 90;
+            if (height == 1) mul = 96;
+            if (height > 5) mul = 96;
+
+            node->pv += pattern_prior * PRIOR_LARGEPATTERN * mul / 100;
             node->pw += pattern_prior * PRIOR_LARGEPATTERN;
+ 
         }
+
         undo_move(&pos2);
     }
 
@@ -878,6 +922,7 @@ void tree_update(Position *pos, TreeNode **nodes, int last
 float nplayouts, nplayouts_per_second=-1.0;
 float start_playouts_sec, stop_playouts_sec;
 int   nplayouts_real;
+
 void update_speed()
 // Update the number of playouts per seconds
 {

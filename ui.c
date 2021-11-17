@@ -20,7 +20,7 @@ void usage() {
 "   * selfplay    run a sequence of self play games\n"
 "and\n"
 "   * config.gtp  an optional file containing gtp commands\n\n");
-    exit(-1);
+   exit(-1);
 }
 
 //----------------------------- utility routines ------------------------------

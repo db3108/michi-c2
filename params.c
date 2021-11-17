@@ -15,6 +15,7 @@ int   PRIOR_LARGEPATTERN = 100;  // most moves have relatively small probability
 int   PRIOR_CFG[]        =     {24, 22, 8};
 int   LEN_PRIOR_CFG      = (sizeof(PRIOR_CFG)/sizeof(int));
 int   PRIOR_EMPTYAREA    = 10;
+
 // --------------- Initial Values for Random Policy parameters-- --------------
 double PROB_HEURISTIC_CAPTURE = 0.9;   // probability of heuristic suggestions
 double PROB_HEURISTIC_PAT3    = 0.95;  // being taken in playout

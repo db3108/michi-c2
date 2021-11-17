@@ -822,6 +822,21 @@ int line_height(Point pt, int size)
     else           return col-1;
 }
 
+int is_corner(Point pt, int size)
+{
+    div_t d = div(pt, N + 1);
+    int row = d.quot, col = d.rem;
+    if (row > size / 2) row = size + 1 - row;
+    if (col > size / 2) col = size + 1 - col;
+    row = row - 1;
+    col = col - 1;
+
+    if ((row == 2 || row == 3) && (col == 2 || col == 3)) {
+        return 1;
+    }
+    return 0;
+}
+
 int empty_area(Position *pos, Point pt, int dist)
 // Check whether there are any stones in Manhattan distance up to dist
 {
