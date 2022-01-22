@@ -46,6 +46,9 @@ that michi-c will work for you.
 *Important Note*  It is highly recommended that you download Michi 
 large-scale pattern files provide by Petr Baudis at
 
-http://pachi.or.cz/michi-pat/
+http://pachi.or.cz/michi-pat/ - unfortunately the patterns are no longer there,
+please unpack patterns.7z instead. The patterns there are derived from old
+Pachi patterns by some regex magic. I expect them to be weaker than missing
+original patterns, but at least they exist. (Pawel Koziol)
 
 Unpack them and place them (or a link to them) in the working directory when you run michi-c (same as michi.py), otherwise michi-c will be much weaker.

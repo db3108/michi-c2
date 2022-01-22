@@ -20,6 +20,7 @@
     #define __INLINE__ static __inline
 #endif
 
+#define PORTABLE
 // ------------------------- Portable definitions -----------------------------
 // of the efficient operations coded below for some (compiler/processor).
 #ifdef PORTABLE

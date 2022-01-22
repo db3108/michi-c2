@@ -1,4 +1,4 @@
-// patterns.c -- Routines for 3x3 patterns and large patterns for michi program
+﻿// patterns.c -- Routines for 3x3 patterns and large patterns for michi program
 //
 // (c) 2015 Denis Blumstein <db3108@free.fr> Petr Baudis <pasky@ucw.cz>
 // MIT licence (i.e. almost public domain)
@@ -65,46 +65,59 @@ char pat3src[][10] = {
     "XOX"   // 1- hane pattern - enclosing hane
     "..."
     "???",
+
     "XO."   // 2- hane pattern - non-cutting hane
     "..." 
     "?.?",
+
     "XO?"   // 3- hane pattern - magari
     "X.." 
     "x.?",
+
     //"XOO",  // hane pattern - thin hane
     //"...",
     //"?.?", "X",  - only for the X player
-    ".O."   // 4- generic pattern - katatsuke or diagonal attachment; 
-            //similar to magari
+
+    ".O."   // 4- generic pattern - katatsuke or diagonal attachment; //similar to magari            
     "X.." 
     "...",
+
     "XO?"   // 5- cut1 pattern (kiri] - unprotected cut
     "O.o" 
     "?o?",
+    
     "XO?"   // 6- cut1 pattern (kiri] - peeped cut
     "O.X" 
     "???",
+    
     "?X?"   // 7- cut2 pattern (de]
     "O.O" 
     "ooo",
+    
     "OX?"   // 8- cut keima
     "o.O" 
     "???",
+    
     "X.?"   // 9- side pattern - chase
     "O.?" 
     "##?",
+    
     "OX?"   // 10- side pattern - block side cut
     "X.O" 
     "###",
+    
     "?X?"   // 11- side pattern - block side connection
     "x.O" 
     "###",
+    
     "?XO"   // 12- side pattern - sagari
     "x.x" 
     "###",
+    
     "?OX"   // 13- side pattern - cut
     "X.O" 
     "###",
+    
     "###" 
     "###" 
     "###"  // Mark the end of the pattern list
@@ -310,6 +323,47 @@ typedef struct hash_t {
 
 // Displacements with respect to the central point
 typedef struct shift_t { int x, y; } Shift;
+
+// 9-intersection pattern (3-spat}
+
+//  {08: 1,-1}  {04: 1, 0}  {06: 1, 1}
+//  {03: 0,-1}  {01: 0, 0}  {02: 0, 1}
+//  {09:-1,-1}  {05:-1, 0}  {07: -1,1}
+
+//  {08: .}  {04: .}  {06: X}
+//  {03: O}  {01: !}  {02: O}
+//  {09: .}  {05: .}  {07: X}
+
+// .OO..XX..
+// .X.OO.... connect against a peep
+
+// 13-intersection pattern (4-spat}
+
+//                           {12: 2, 0}
+//               {08: 1,-1}  {04: 1, 0}  {06: 1, 1}
+//   {11: 0, -2} {03: 0,-1}  {01: 0, 0}  {02: 0, 1}  {10: 0,2}
+//               {09:-1,-1}  {05:-1, 0}  {07: -1,1}
+//                           {13:-2, 0}
+
+// 21-intersection pattern (5-spat)
+
+//               {19: 2,-1}  {12: 2, 0}  {18: 2, 1}
+//   {16: 1, -2} {08: 1,-1}  {04: 1, 0}  {06: 1, 1}  {14: 1,2}
+//   {11: 0, -2} {03: 0,-1}  {01: 0, 0}  {02: 0, 1}  {10: 0,2}
+//   {17:-1,-2 } {09:-1,-1}  {05:-1, 0}  {07: -1,1}  {15:-1,2}
+//               {21:-2,-1}  {13:-2, 0}  {20: -2,1}
+
+// 29-intersection pattern (6-spat)
+
+//                                       {28: 3, 0}
+//               {26: 2,-2}  {19: 2,-1}  {12: 2, 0}  {18: 2, 1}  {24: 2,2}
+//               {16: 1, -2} {08: 1,-1}  {04: 1, 0}  {06: 1, 1}  {14: 1,2}
+//   {23: 0. -3} {11: 0, -2} {03: 0,-1}  {01: 0, 0}  {02: 0, 1}  {10: 0,2}  {22: 0,3}
+//               {17:-1,-2 } {09:-1,-1}  {05:-1, 0}  {07: -1,1}  {15:-1,2}
+//               {27:-2,-2 } {21:-2,-1}  {13:-2, 0}  {20: -2,1}  {25:-2,2}
+//                                       {29:-3, 0}
+
+// ............................X 
 
 //---------------------------- Global Data ------------------------------------
 Shift pat_gridcular_seq[] = {

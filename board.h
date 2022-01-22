@@ -101,6 +101,7 @@ char*  empty_position(Position *pos);
 char   is_eye(Position *pos, Point pt);
 char   is_eyeish(Position *pos, Point pt);
 int    line_height(Point pt, int size);
+int    is_corner(Point pt, int size);
 void   make_list_last_moves_neighbors(Position *pos, Slist points);
 void   make_list_neighbor_blocks_in_atari(Position *pos, Block b, Slist blocks,
                                                                      Point pt);
